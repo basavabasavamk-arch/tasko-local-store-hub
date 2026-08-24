@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="kn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="pageTitle">Tasko Dukaan - Local Marketplace</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+    import { getDatabase, ref, set, get, update, remove, child } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-analytics.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAe0cQ-XlUh98hhqnmh3n6GHOLKvN8rJO8",
+      authDomain: "taskodukaan.firebaseapp.com",
+      databaseURL: "https://taskodukaan-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "taskodukaan",
+      storageBucket: "taskodukaan.firebasestorage.app",
+      messagingSenderId: "142001604429",
+      appId: "1:142001604429:web:7f803843aa979245dcd904",
+      measurementId: "G-RGH20SLPWK"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const analytics = getAnalytics(app);
+
+    window.FB_DB = db;
+    window.FB_ref = ref;
+    window.FB_set = set;
+    window.FB_get = get;
+    window.FB_update = update;
+    window.FB_remove = remove;
+    window.FB_child = child;
+  </script>
+</head>
+<body class="bg-gray-950 font-sans text-gray-100 min-h-screen pb-24">
+
+  <div class="max-w-md mx-auto bg-gray-900 min-h-screen shadow-2xl border-x border-gray-800 flex flex-col relative">
+
+    <!-- TOP BAR WITH LOGO & 3-DOT MENU -->
+    <div class="bg-gray-950 px-4 py-3 flex justify-between items-center border-b border-gray-800 relative">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-green-500 to-emerald-700 flex items-center justify-center font-black text-black text-sm shadow">TD</div>
+        <span id="txtPlatformName" class="font-black text-white text-sm">Tasko Dukaan</span>
+      </div>
+
+      <!-- 3-Dot Menu Button -->
+      <button onclick="toggleThreeDotMenu()" class="w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white rounded-xl flex items-center justify-center font-black text-base shadow border border-gray-700 transition">
+        ⋮
+      </button>
+
+      <!-- 3-Dot Dropdown Menu Content -->
+      <div id="threeDotDropdown" class="hidden absolute top-14 right-4 bg-gray-900 border border-gray-700 w-60 rounded-2xl shadow-2xl p-3 z-50 space-y-3">
+        <button onclick="openCustomerProfileModal(); toggleThreeDotMenu();" class="w-full text-left bg-gray-800 hover:bg-gray-700 text-cyan-400 font-bold px-3 py-2.5 rounded-xl text-xs transition flex items-center gap-2">
+          <span>👤</span> <span id="menuTxtProfile">ಪ್ರೊಫೈಲ್ & ಸ್ಮಾರ್ಟ್ ಟ್ರ್ಯಾಕರ್</span>
+        </button>
+        
+        <div class="border-t border-gray-800 pt-2 space-y-1.5">
+          <label class="text-[10px] text-gray-400 font-bold block px-1" id="menuTxtLangTitle">ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ / Language:</label>
+          <select id="globalLangSelect" onchange="changeLanguage(this.value); toggleThreeDotMenu();" class="w-full bg-gray-800 border border-gray-700 p-2 rounded-xl text-xs text-green-400 font-bold outline-none">
+            <option value="kn">ಕನ್ನಡ (Kannada)</option>
+            <option value="en">English</option>
+            <option value="hi">हिंदी (Hindi)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOME PAGE PERSISTENT LIVE ORDER TRACKER BANNER (BLINKING) -->
+    <div id="homeLiveOrderBanner" class="hidden bg-gradient-to-r from-amber-600 to-orange-700 px-4 py-3 text-xs text-white shadow-lg border-b border-orange-500/50 flex flex-col gap-2">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 bg-yellow-300 rounded-full animate-ping"></span>
+          <span class="font-black tracking-wide">📦 ಲೈವ್ ಆರ್ಡರ್ ಟ್ರ್ಯಾಕರ್</span>
+        </div>
+        <span id="homeOrderStatusBadge" class="bg-black/30 text-yellow-200 font-bold px-2 py-0.5 rounded text-[10px]">ಸ್ವೀಕರಿಸಲಾಗಿದೆ</span>
+      </div>
+      <div class="flex justify-between items-center text-[11px] text-orange-100">
+        <span id="homeOrderShopNameText">ಶಾಪ್: ---</span>
+        <div class="flex gap-2">
+          <button onclick="cancelActiveOrder()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] shadow transition">
+            ❌ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಿ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 1: MARKETPLACE HOME -->
+    <div id="marketHomeView" class="flex flex-col flex-1">
+      <div class="bg-gradient-to-r from-green-600 to-emerald-800 p-5 text-center space-y-2 rounded-b-3xl shadow-lg">
+        <span id="txtBannerTag" class="bg-black/20 text-green-200 text-[10px] font-bold px-3 py-1 rounded-full border border-green-400/30">⚡ 3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ</span>
+        <h1 id="txtMainTitle" class="text-xl font-black text-white">ನಿಮ್ಮ ಊರಿನ ಎಲ್ಲಾ ಅಂಗಡಿಗಳು ಒಂದೇ ಕಡೆ</h1>
+        <p id="txtSubTitle" class="text-xs text-green-100">ಮೆಚ್ಚಿನ ಅಂಗಡಿ ಆಯ್ಕೆಮಾಡಿ ಮನೆಯಿಂದಲೇ ಆರ್ಡರ್ ಮಾಡಿ!</p>
+      </div>
+
+      <div class="p-4 space-y-3">
+        <div class="flex gap-2">
+          <input type="text" id="marketplaceSearchInput" onkeyup="filterMarketplaceShops()" placeholder="🔍 ಅಂಗಡಿ ಹೆಸರು ಅಥವಾ 4 ಅಂಕಿಯ ಕೋಡ್..." class="flex-1 bg-gray-800 border border-gray-700 p-3.5 rounded-2xl text-xs text-white outline-none focus:border-green-500 shadow">
+          <button onclick="searchShopByCodeDirect()" id="btnSearch" class="bg-green-500 hover:bg-green-600 text-black font-bold px-4 rounded-2xl text-xs transition shadow">
+            ಹುಡುಕಿ ➔
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <h2 id="txtStoresHeading" class="font-bold text-white text-sm">ಲಭ್ಯವಿರುವ ಲೋಕಲ್ ಅಂಗಡಿಗಳು</h2>
+          <button onclick="toggleFavoriteFilter()" id="btnFavFilter" class="bg-gray-800 hover:bg-gray-700 text-pink-400 border border-pink-500/30 font-bold text-[11px] px-3 py-1.5 rounded-xl transition shadow flex items-center gap-1.5">
+            ❤️ ನನ್ನ ಫೇವರೆಟ್ಸ್
+          </button>
+        </div>
+      </div>
+
+      <div class="p-4 pt-0 flex-1 space-y-3">
+        <div id="marketplaceShopsGrid" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: INDIVIDUAL STORE INTERIOR -->
+    <div id="storeInteriorView" class="hidden flex flex-col flex-1">
+      <div class="relative h-44 bg-gray-800">
+        <img id="custStoreBanner" src="https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1200" class="w-full h-full object-cover opacity-60">
+        <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent"></div>
+        
+        <div class="absolute top-3 left-3 flex items-center gap-2">
+          <button onclick="backToMarketplace()" id="btnBackHome" class="bg-gray-950/80 hover:bg-gray-800 text-white text-xs font-bold px-3 py-1.5 rounded-full border border-gray-700 shadow">
+            ⬅ ಹೋಮ್‌ಗೆ
+          </button>
+        </div>
+        <div class="absolute top-3 right-3 flex items-center gap-1.5">
+          <!-- DIRECT CALL / CONTACT STORE BUTTON -->
+          <a id="storeCallBtn" href="tel:919999999999" class="bg-green-500 hover:bg-green-600 text-black font-bold text-xs px-3 py-1.5 rounded-full shadow transition flex items-center gap-1">
+            📞 ಕರೆ ಮಾಡಿ
+          </a>
+          <button onclick="openStoreCustomerKhataModal()" id="btnKhataCheck" class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black font-bold text-xs px-3 py-1.5 rounded-full border border-amber-500/40 transition shadow">
+            📖 ಉದ್ರಿ
+          </button>
+        </div>
+
+        <div class="absolute bottom-3 left-4 right-4 flex items-center gap-3">
+          <img id="custStoreLogo" src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=500" class="w-14 h-14 rounded-2xl object-cover border-2 border-gray-700 bg-gray-800 shadow">
+          <div class="flex-1">
+            <h1 id="custStoreName" class="text-lg font-black text-white drop-shadow">ಅಂಗಡಿ ಹೆಸರು</h1>
+            <p id="custStoreAddr" class="text-gray-300 text-xs font-semibold">📍 ವಿಳಾಸ</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- STORE INTERIOR LIVE TRACKER & CANCEL -->
+      <div id="liveOrderTrackerBar" class="hidden bg-cyan-950/90 border-b border-cyan-500/40 p-3 text-xs space-y-1.5 shadow-md">
+        <div class="flex justify-between font-bold text-cyan-300">
+          <span>📦 ಲೈವ್ ಆರ್ಡರ್ ಸ್ಟೇಟಸ್:</span>
+          <span id="liveOrderStatusText" class="text-green-400">ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ</span>
+        </div>
+        <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+          <div id="liveOrderProgressBar" class="bg-green-500 h-full w-1/3 transition-all duration-500"></div>
+        </div>
+        <div class="flex justify-end pt-1">
+          <button onclick="cancelActiveOrder()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1 rounded-lg text-[10px] shadow transition">
+            ❌ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಿ
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-gradient-to-r from-amber-500/20 via-green-500/20 to-cyan-500/20 border-y border-green-500/30 px-4 py-2 flex items-center justify-between text-xs">
+        <span id="txtFreeDelivery" class="font-bold text-green-400 flex items-center gap-1">🚚 3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ!</span>
+        <span class="text-gray-300 font-semibold">ಫಾಸ್ಟ್ ಸರ್ವೀಸ್</span>
+      </div>
+
+      <!-- Products & Rating Section -->
+      <div class="p-4 flex-1 space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 id="txtProductsHeading" class="font-bold text-white text-base">ಅಂಗಡಿಯ ವಸ್ತುಗಳು</h2>
+          <button onclick="openRatingModal()" class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold text-[10px] px-2.5 py-1 rounded-xl">⭐ ರೇಟಿಂಗ್ ನೀಡಿ</button>
+        </div>
+        <div id="custProductGrid" class="space-y-3"></div>
+      </div>
+
+      <!-- Bottom Floating Cart Bar -->
+      <div id="custCartBar" class="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-gray-900/95 border-t border-gray-800 p-4 backdrop-blur flex justify-between items-center hidden shadow-2xl z-40">
+        <div>
+          <p id="custCartCount" class="text-xs text-gray-400">0 ವಸ್ತುಗಳು</p>
+          <h3 id="custCartTotal" class="text-xl font-black text-green-400">₹0</h3>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="openCheckout('whatsapp')" id="btnWaOrder" class="bg-green-600 hover:bg-green-700 active:scale-95 text-white font-bold px-3.5 py-3 rounded-xl shadow-lg transition text-xs">
+            💬 ವಾಟ್ಸಾಪ್ ಆರ್ಡರ್
+          </button>
+          <button onclick="openCheckout('app')" id="btnAppOrder" class="bg-green-500 hover:bg-green-600 active:scale-95 text-black font-bold px-3.5 py-3 rounded-xl shadow-lg transition text-xs">
+            ಆರ್ಡರ್ ಮಾಡಿ ➔
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: RATING -->
+  <div id="storeRatingModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-sm rounded-3xl p-6 space-y-4">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-white text-base">⭐ ಅಂಗಡಿಗೆ ರೇಟಿಂಗ್ ನೀಡಿ</h3>
+        <button onclick="closeRatingModal()" class="text-gray-400 text-lg">✕</button>
+      </div>
+      <div class="space-y-3 text-center" id="ratingModalBodyContent">
+        <div class="flex justify-center gap-2 text-3xl" id="starContainer">
+          <button onclick="setRating(1)" class="star-btn text-yellow-400 transition" data-val="1">★</button>
+          <button onclick="setRating(2)" class="star-btn text-yellow-400 transition" data-val="2">★</button>
+          <button onclick="setRating(3)" class="star-btn text-yellow-400 transition" data-val="3">★</button>
+          <button onclick="setRating(4)" class="star-btn text-yellow-400 transition" data-val="4">★</button>
+          <button onclick="setRating(5)" class="star-btn text-yellow-400 transition" data-val="5">★</button>
+        </div>
+        <textarea id="reviewCommentInput" placeholder="ನಿಮ್ಮ ಅನಿಸಿಕೆ ತಿಳಿಸಿ..." class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-xs text-white outline-none h-20 resize-none"></textarea>
+        <button onclick="submitStoreRating()" id="submitRatingBtn" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-xl text-xs transition shadow">ರೇಟಿಂಗ್ ಸಬ್ಮಿಟ್ ಮಾಡಿ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: UDHARI SMART BILL -->
+  <div id="storeCustomerKhataModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-white text-base">📖 ಉದ್ರಿ ಸ್ಮಾರ್ಟ್ ಬಿಲ್ & ಸ್ಟೇಟ್‌ಮೆಂಟ್</h3>
+        <button onclick="closeStoreCustomerKhataModal()" class="text-gray-400 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3">
+        <div class="bg-gray-800 p-3 rounded-xl text-xs flex justify-between items-center border border-gray-700">
+          <span class="text-gray-400">ಲಾಗಿನ್ ನಂಬರ್: <strong id="khataModalPhoneDisplay" class="text-cyan-400 font-mono">---</strong></span>
+          <span class="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">Auto-Detected</span>
+        </div>
+
+        <div id="smartBillWhitePaper" class="bg-white text-black p-4 rounded-2xl shadow-xl space-y-3 text-xs font-mono">
+          <div class="text-center border-b border-gray-300 pb-2">
+            <h4 id="billShopName" class="font-black text-sm">ಅಂಗಡಿ ಹೆಸರು</h4>
+            <p id="billShopAddr" class="text-[10px] text-gray-600">ವಿಳಾಸ</p>
+            <p class="text-[10px] font-bold text-gray-800 mt-1">-- ಉದ್ರಿ ಖಾತಾ ಸ್ಟೇಟ್‌ಮೆಂಟ್ --</p>
+          </div>
+          
+          <div class="space-y-1 text-gray-700">
+            <p><b>ಗ್ರಾಹಕರು:</b> <span id="billCustName">---</span></p>
+            <p><b>ಫೋನ್:</b> <span id="billCustPhone">---</span></p>
+          </div>
+
+          <div class="border-t border-b border-gray-300 py-2 space-y-2 max-h-40 overflow-y-auto" id="billEntriesContainer"></div>
+
+          <div class="flex justify-between items-center font-black text-sm pt-1 text-red-600">
+            <span>ಒಟ್ಟು ಬಾಕಿ ಮೊತ್ತ (Total Due):</span>
+            <span id="billTotalDue">₹0</span>
+          </div>
+        </div>
+
+        <div id="khataPaymentSection" class="bg-gray-800 p-4 rounded-2xl border border-cyan-500/30 text-center space-y-2 hidden">
+          <p class="text-[11px] text-cyan-400 font-bold">ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಬಾಕಿ ಹಣ ಪಾವತಿಸಿ (Pay Online):</p>
+          <div id="khataQrAvailable" class="hidden space-y-2">
+            <img id="khataPaymentQrImg" src="" class="w-36 h-36 mx-auto bg-white p-1 rounded-2xl shadow object-contain">
+            <p class="text-[10px] text-gray-400">ಕ್ಯೂಆರ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಪಾವತಿಸಿ ಕೆಳಗಿನ ಬಟನ್ ಒತ್ತಿ</p>
+            <button onclick="settleKhataOnline()" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-2.5 rounded-xl text-xs transition shadow">
+              ✔ ಪಾವತಿ ಪೂರ್ಣಗೊಂಡಿದೆ (Pay & Clear)
+            </button>
+          </div>
+          <div id="khataQrNotAvailable" class="hidden p-2 bg-gray-900 rounded-xl border border-amber-500/30">
+            <p class="text-xs text-amber-400">ಅಂಗಡಿಯವರು QR ಅಪ್ಲೋಡ್ ಮಾಡಿಲ್ಲ. ನೇರವಾಗಿ ಅಂಗಡಿಗೆ ಹಣ ನೀಡಿ.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CUSTOMER PROFILE -->
+  <div id="customerProfileModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-white text-base">👤 ಪ್ರೊಫೈಲ್ & ಸ್ಮಾರ್ಟ್ ಟ್ರ್ಯಾಕರ್</h3>
+        <button onclick="closeCustomerProfileModal()" class="text-gray-400 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-4">
+        <div class="bg-gray-800 p-4 rounded-2xl border border-gray-700 flex items-center gap-4">
+          <div class="relative">
+            <img id="profileAvatarImg" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200" class="w-16 h-16 rounded-2xl object-cover border-2 border-green-500 bg-gray-900 shadow">
+            <input type="file" id="profilePicUploadInput" accept="image/*" onchange="handleProfilePicUpload(event)" class="absolute inset-0 opacity-0 cursor-pointer" title="ಫೋಟೋ ಬದಲಾಯಿಸಿ">
+          </div>
+          <div class="flex-1 space-y-1">
+            <input type="text" id="profInputName" placeholder="ನಿಮ್ಮ ಹೆಸರು" onchange="saveProfileDetails()" class="w-full bg-gray-900 border border-gray-700 px-3 py-1.5 rounded-xl text-xs text-white font-bold outline-none">
+            <input type="tel" id="profInputPhone" placeholder="ಮೊಬೈಲ್ ನಂಬರ್ (OTP Verified)" readonly class="w-full bg-gray-950 border border-gray-800 px-3 py-1.5 rounded-xl text-xs text-cyan-400 font-mono outline-none cursor-not-allowed">
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold text-gray-400">ಖರ್ಚು ಟ್ರ್ಯಾಕಿಂಗ್ ಅವಧಿ (Expense Tracking):</label>
+          <div class="flex gap-2">
+            <select id="expenseTimeRange" onchange="renderCustomerExpensesTracker()" class="flex-1 bg-gray-800 border border-gray-700 p-2.5 rounded-xl text-xs text-green-400 font-bold outline-none">
+              <option value="monthly">ಈ ತಿಂಗಳ ಒಟ್ಟು ಖರ್ಚು (This Month)</option>
+              <option value="yearly">ಈ ವರ್ಷದ ಒಟ್ಟು ಖರ್ಚು (This Year)</option>
+              <option value="all">ಎಲ್ಲಾ ಕಾಲದ ಒಟ್ಟು ಖರ್ಚು (All Time)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-r from-gray-800 to-gray-800/60 p-4 rounded-2xl border border-green-500/30 text-center space-y-1 shadow">
+          <p class="text-xs text-gray-400">ಖರ್ಚು ಮಾಡಿರುವ ಒಟ್ಟು ಮೊತ್ತ:</p>
+          <h2 id="trackerTotalSpent" class="text-3xl font-black text-green-400">₹0</h2>
+        </div>
+
+        <div class="space-y-2">
+          <p class="text-xs font-bold text-gray-300">ಆರ್ಡರ್ ಹಿಸ್ಟರಿ & ಸ್ಟೇಟ್‌ಮೆಂಟ್:</p>
+          <div class="space-y-2 max-h-44 overflow-y-auto" id="trackerOrdersList">
+            <p class="text-xs text-gray-500 text-center py-4">ದಯವಿಟ್ಟು ಮೊದಲು ಆರ್ಡರ್ ಮಾಡಿ ಲಾಗಿನ್ ಆಗಿ.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECKOUT MODAL -->
+  <div id="custCheckoutModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-sm rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-white text-lg" id="modalCheckoutTitle">ಆರ್ಡರ್ ವಿವರ & ಲಾಗಿನ್</h3>
+        <button onclick="closeCheckout()" class="text-gray-400 text-lg">✕</button>
+      </div>
+
+      <div class="bg-gray-800 p-3.5 rounded-2xl border border-gray-700 text-xs space-y-1.5">
+        <p class="font-bold text-green-400" id="modalBillSummaryLabel">ಆರ್ಡರ್ ರಶೀದಿ (Bill Summary):</p>
+        <div id="checkoutSummaryText" class="text-gray-300 space-y-1"></div>
+        <div class="border-t border-gray-700 pt-1.5 flex justify-between font-black text-white text-sm">
+          <span id="modalTotalLabel">ಒಟ್ಟು ಮೊತ್ತ:</span>
+          <span id="modalTotalAmount" class="text-green-400">₹0</span>
+        </div>
+      </div>
+
+      <div class="space-y-2.5">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1" id="labelCustName">ನಿಮ್ಮ ಹೆಸರು *</label>
+          <input type="text" id="custOrderName" placeholder="ಉದಾ: ರಮೇಶ್" class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-xl text-sm text-white outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1" id="labelCustPhone">ಮೊಬೈಲ್ ನಂಬರ್ (Secure OTP) *</label>
+          <div class="flex gap-2">
+            <input type="tel" id="custOrderPhone" placeholder="10 ಅಂಕಿಗಳ ನಂಬರ್" class="flex-1 bg-gray-800 border border-gray-700 p-2.5 rounded-xl text-sm text-white outline-none">
+            <button onclick="sendOtpForCheckout()" id="btnSendOtp" class="bg-cyan-500 hover:bg-cyan-600 text-black font-bold px-3 rounded-xl text-xs">OTP</button>
+          </div>
+        </div>
+        <div id="otpBoxContainer" class="hidden">
+          <label class="block text-xs font-semibold text-cyan-400 mb-1" id="labelOtpPrompt">OTP ನಮೂದಿಸಿ (Default: 1234) *</label>
+          <input type="text" id="custOtpInput" placeholder="1234" class="w-full bg-gray-800 border border-cyan-500 p-2.5 rounded-xl text-sm text-white outline-none text-center font-bold tracking-widest">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1" id="labelCustAddr">ಡೆಲಿವರಿ ವಿಳಾಸ *</label>
+          <input type="text" id="custOrderAddr" placeholder="ಮನೆ ನಂ, ರಸ್ತೆ, ಏರಿಯಾ" class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-xl text-sm text-white outline-none">
+        </div>
+        <div id="paymentTypeContainer">
+          <label class="block text-xs font-semibold text-gray-400 mb-1" id="labelPayType">ಪಾವತಿ ವಿಧಾನ:</label>
+          <select id="custOrderPayType" onchange="toggleUpiQrSection()" class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-xl text-sm text-green-400 font-bold outline-none">
+            <option value="cod">Cash on Delivery (COD)</option>
+            <option value="upi">PhonePe / GPay QR Scan (Paid)</option>
+            <option value="udri">ಖಾತೆ / ಉದ್ರಿ (Add to Khata)</option>
+          </select>
+        </div>
+
+        <div id="shopUpiQrSection" class="hidden bg-gray-800 p-4 rounded-2xl border border-cyan-500/30 text-center space-y-2">
+          <p class="text-[11px] text-cyan-400 font-bold" id="txtScanTitle">ಅಂಗಡಿಯವರ GPay / PhonePe QR ಕೋಡ್:</p>
+          <div id="qrAvailableBox" class="hidden">
+            <img id="custPayQrImg" src="" class="w-40 h-40 mx-auto bg-white p-1 rounded-2xl shadow object-contain">
+            <p class="text-[10px] text-gray-400 mt-1" id="txtScanSub">ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಪಾವತಿಸಿ ಆರ್ಡರ್ ಕನ್ಫರ್ಮ್ ಮಾಡಿ.</p>
+          </div>
+          <div id="qrNotAvailableBox" class="hidden p-3 bg-gray-900 rounded-xl border border-amber-500/30">
+            <p class="text-xs text-amber-400 font-bold" id="txtNoQrWarn">⚠️ ಅಂಗಡಿಯವರು ಸ್ಕ್ಯಾನರ್ ಅಪ್ಲೋಡ್ ಮಾಡಿಲ್ಲ!</p>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="confirmAndSendOrder()" id="btnConfirmOrder" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3.5 rounded-xl transition shadow">
+        ✔ ಆರ್ಡರ್ ಕನ್ಫರ್ಮ್ ಮಾಡಿ
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const langData = {
+      kn: {
+        banner: "⚡ 3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ",
+        title: "ನಿಮ್ಮ ಊರಿನ ಎಲ್ಲಾ ಅಂಗಡಿಗಳು ಒಂದೇ ಕಡೆ",
+        subtitle: "ಮೆಚ್ಚಿನ ಅಂಗಡಿ ಆಯ್ಕೆಮಾಡಿ ಮನೆಯಿಂದಲೇ ಆರ್ಡರ್ ಮಾಡಿ!",
+        searchPlaceholder: "🔍 ಅಂಗಡಿ ಹೆಸರು ಅಥವಾ 4 ಅಂಕಿಯ ಕೋಡ್...",
+        searchBtn: "ಹುಡುಕಿ ➔",
+        storesHeading: "ಲಭ್ಯವಿರುವ ಲೋಕಲ್ ಅಂಗಡಿಗಳು",
+        backHome: "⬅ ಹೋಮ್‌ಗೆ",
+        khataCheck: "📖 ಉದ್ರಿ",
+        freeDelivery: "🚚 3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ!",
+        productsHeading: "ಅಂಗಡಿಯ ವಸ್ತುಗಳು",
+        waOrder: "💬 ವಾಟ್ಸಾಪ್ ಆರ್ಡರ್",
+        appOrder: "ಆರ್ಡರ್ ಮಾಡಿ ➔",
+        visitBtn: "ಭೇಟಿ ನೀಡಿ ➔",
+        addBtn: "+ ಸೇರಿಸಿ",
+        confirmBtn: "✔ ಆರ್ಡರ್ ಕನ್ಫರ್ಮ್ ಮಾಡಿ",
+        verified: "✔ Verified Partner",
+        profileMenu: "ಪ್ರೊಫೈಲ್ & ಸ್ಮಾರ್ಟ್ ಟ್ರ್ಯಾಕರ್",
+        langTitle: "ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ / Language:",
+        favBtn: "❤️ ನನ್ನ ಫೇವರೆಟ್ಸ್",
+        callBtn: "📞 ಕರೆ"
+      },
+      en: {
+        banner: "⚡ Free Delivery within 3 KM",
+        title: "All Your Local Shops in One Place",
+        subtitle: "Choose your favorite shop & order from home!",
+        searchPlaceholder: "🔍 Shop Name or 4-Digit Code...",
+        searchBtn: "Search ➔",
+        storesHeading: "Available Local Shops",
+        backHome: "⬅ Back to Home",
+        khataCheck: "📖 Due",
+        freeDelivery: "🚚 Free Delivery within 3 KM!",
+        productsHeading: "Store Products",
+        waOrder: "💬 WhatsApp Order",
+        appOrder: "Order Now ➔",
+        visitBtn: "Visit Store ➔",
+        addBtn: "+ Add",
+        confirmBtn: "✔ Confirm Order",
+        verified: "✔ Verified Partner",
+        profileMenu: "Profile & Smart Tracker",
+        langTitle: "Select Language:",
+        favBtn: "❤️ My Favorites",
+        callBtn: "📞 Call"
+      },
+      hi: {
+        banner: "⚡ 3 किमी के भीतर मुफ्त डिलीवरी",
+        title: "आपके शहर की सभी दुकानें एक ही जगह",
+        subtitle: "पसंदीदा दुकान चुनें और घर बैठे आर्डर करें!",
+        searchPlaceholder: "🔍 दुकान का नाम या 4-अंकों का कोड...",
+        searchBtn: "खोजें ➔",
+        storesHeading: "उपलब्ध स्थानीय दुकानें",
+        backHome: "⬅ होम पर जाएं",
+        khataCheck: "📖 उधार",
+        freeDelivery: "🚚 3 किमी के भीतर मुफ्त डिलीवरी!",
+        productsHeading: "स्टोर उत्पाद",
+        waOrder: "💬 व्हाट्सएप ऑर्डर",
+        appOrder: "ऑर्डर करें ➔",
+        visitBtn: "दुकान देखें ➔",
+        addBtn: "+ जोड़ें",
+        confirmBtn: "✔ ऑर्डर कन्फर्म करें",
+        verified: "✔ Verified Partner",
+        profileMenu: "प्रोफाइल & स्मार्ट ट्रैकर",
+        langTitle: "भाषा चुनें:",
+        favBtn: "❤️ मेरे फेवरेट्स",
+        callBtn: "📞 कॉल"
+      }
+    };
+
+    let currentLang = 'kn';
+    let showOnlyFavorites = false;
+    let selectedRatingStars = 5;
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+      const t = langData[lang];
+      document.getElementById('txtBannerTag').innerText = t.banner;
+      document.getElementById('txtMainTitle').innerText = t.title;
+      document.getElementById('txtSubTitle').innerText = t.subtitle;
+      document.getElementById('marketplaceSearchInput').placeholder = t.searchPlaceholder;
+      document.getElementById('btnSearch').innerText = t.searchBtn;
+      document.getElementById('txtStoresHeading').innerText = t.storesHeading;
+      document.getElementById('btnBackHome').innerText = t.backHome;
+      document.getElementById('btnKhataCheck').innerText = t.khataCheck;
+      document.getElementById('txtFreeDelivery').innerText = t.freeDelivery;
+      document.getElementById('txtProductsHeading').innerText = t.productsHeading;
+      document.getElementById('btnWaOrder').innerText = t.waOrder;
+      document.getElementById('btnAppOrder').innerText = t.appOrder;
+      document.getElementById('btnConfirmOrder').innerText = t.confirmBtn;
+      document.getElementById('menuTxtProfile').innerText = t.profileMenu;
+      document.getElementById('menuTxtLangTitle').innerText = t.langTitle;
+      document.getElementById('btnFavFilter').innerText = showOnlyFavorites ? "❤️ (Active) Favorites" : t.favBtn;
+      
+      loadMarketplaceShops(document.getElementById('marketplaceSearchInput').value.trim());
+      if(activeShop) loadStoreProducts();
+    }
+
+    function toggleThreeDotMenu() {
+      document.getElementById('threeDotDropdown').classList.toggle('hidden');
+    }
+
+    let activeShop = null;
+    let cart = {};
+    let checkoutMode = 'app';
+
+    window.addEventListener('DOMContentLoaded', async () => { 
+      await syncCloudDataToLocalStorage();
+      loadMarketplaceShops(); 
+      loadSavedProfile();
+      checkActiveOrderTracker();
+    });
+
+    async function syncCloudDataToLocalStorage() {
+      if(!window.FB_DB) return;
+      try {
+        const db = window.FB_DB;
+        const ref = window.FB_ref;
+        const get = window.FB_get;
+        const child = window.FB_child;
+
+        const shopsSnap = await get(child(ref(db), 'allPlatformShops'));
+        if(shopsSnap.exists()) {
+          localStorage.setItem('allPlatformShops', JSON.stringify(shopsSnap.val()));
+        }
+
+        const ordersSnap = await get(child(ref(db), 'shopOrders'));
+        if(ordersSnap.exists()) {
+          localStorage.setItem('shopOrders', JSON.stringify(ordersSnap.val()));
+        }
+
+        const allShops = JSON.parse(localStorage.getItem('allPlatformShops') || '[]');
+        for(let shop of allShops) {
+          const prodsSnap = await get(child(ref(db), `prods_${shop.id}`));
+          if(prodsSnap.exists()) {
+            localStorage.setItem(`prods_${shop.id}`, JSON.stringify(prodsSnap.val()));
+          }
+          const ledgerSnap = await get(child(ref(db), `ledger_${shop.id}`));
+          if(ledgerSnap.exists()) {
+            localStorage.setItem(`ledger_${shop.id}`, JSON.stringify(ledgerSnap.val()));
+          }
+          const ratSnap = await get(child(ref(db), `shop_ratings_${shop.id}`));
+          if(ratSnap.exists()) {
+            localStorage.setItem(`shop_ratings_${shop.id}`, JSON.stringify(ratSnap.val()));
+          }
+        }
+      } catch(e) { console.error("Cloud Sync Error:", e); }
+    }
+
+    function getFavoritesList() {
+      return JSON.parse(localStorage.getItem('cust_favorites_list') || '[]');
+    }
+
+    function toggleFavoriteShop(shopId, event) {
+      event.stopPropagation();
+      let favs = getFavoritesList();
+      if(favs.includes(shopId)) {
+        favs = favs.filter(id => id !== shopId);
+      } else {
+        favs.push(shopId);
+      }
+      localStorage.setItem('cust_favorites_list', JSON.stringify(favs));
+      loadMarketplaceShops(document.getElementById('marketplaceSearchInput').value.trim());
+    }
+
+    function toggleFavoriteFilter() {
+      showOnlyFavorites = !showOnlyFavorites;
+      const t = langData[currentLang];
+      const btn = document.getElementById('btnFavFilter');
+      if(showOnlyFavorites) {
+        btn.className = "bg-pink-600 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl transition shadow flex items-center gap-1.5 border border-pink-400";
+        btn.innerText = "❤️ ತೋರಿಸಲಾಗುತ್ತಿದೆ (Favorites)";
+      } else {
+        btn.className = "bg-gray-800 hover:bg-gray-700 text-pink-400 border border-pink-500/30 font-bold text-[11px] px-3 py-1.5 rounded-xl transition shadow flex items-center gap-1.5";
+        btn.innerText = t.favBtn;
+      }
+      loadMarketplaceShops();
+    }
+
+    function loadMarketplaceShops(filterQuery = "") {
+      const allShops = JSON.parse(localStorage.getItem('allPlatformShops') || '[]');
+      const grid = document.getElementById('marketplaceShopsGrid');
+      grid.innerHTML = '';
+
+      let filteredShops = allShops;
+      if (showOnlyFavorites) {
+        const favs = getFavoritesList();
+        filteredShops = allShops.filter(s => favs.includes(s.id));
+      }
+
+      if (filterQuery) {
+        const q = filterQuery.toLowerCase();
+        filteredShops = filteredShops.filter(s => (s.name && s.name.toLowerCase().includes(q)) || (s.shopCode && s.shopCode.includes(q)) || (s.addr && s.addr.toLowerCase().includes(q)));
+      }
+
+      if (filteredShops.length === 0) {
+        grid.innerHTML = '<p class="text-center text-gray-500 text-xs py-10">ಯಾವುದೇ ಅಂಗಡಿಗಳು ಸಿಕ್ಕಿಲ್ಲ.</p>';
+        return;
+      }
+
+      const favs = getFavoritesList();
+      const t = langData[currentLang];
+      filteredShops.forEach(shop => {
+        if (!shop.id) shop.id = 'shop_' + (shop.phone || Math.random());
+        if (!shop.shopCode) shop.shopCode = Math.floor(1000 + Math.random() * 9000).toString();
+        const logo = localStorage.getItem(`shop_logo_${shop.id}`) || shop.logo || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500';
+        const isFav = favs.includes(shop.id);
+        
+        const ratingsList = JSON.parse(localStorage.getItem(`shop_ratings_${shop.id}`) || '[]');
+        let avgRating = "4.8";
+        if(ratingsList.length > 0) {
+          const sum = ratingsList.reduce((acc, r) => acc + r.stars, 0);
+          avgRating = (sum / ratingsList.length).toFixed(1);
+        }
+        
+        grid.innerHTML += `
+          <div class="bg-gray-800/85 border border-gray-700/80 p-4 rounded-2xl flex items-center justify-between gap-3 shadow-md hover:border-green-500/50 transition relative">
+            <button onclick="toggleFavoriteShop('${shop.id}', event)" class="absolute top-2 right-2 w-7 h-7 rounded-full bg-gray-900/80 border border-gray-700 flex items-center justify-center text-sm shadow transition hover:scale-110">
+              ${isFav ? '❤️' : '🤍'}
+            </button>
+
+            <img src="${logo}" class="w-14 h-14 rounded-xl object-cover border border-gray-700 bg-gray-900 shadow">
+            <div class="flex-1 pr-6">
+              <div class="flex items-center gap-1.5">
+                <h3 class="font-bold text-sm text-white">${shop.name || 'ನನ್ನ ಅಂಗಡಿ'}</h3>
+                <span class="text-[9px] bg-cyan-500/20 text-cyan-400 font-mono font-bold px-1.5 py-0.5 rounded border border-cyan-500/30">Code: ${shop.shopCode}</span>
+              </div>
+              <p class="text-xs text-gray-400 mt-0.5">📍 ${shop.addr || 'Karnataka'}</p>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="inline-block text-[10px] text-green-400 font-bold bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">${t.verified}</span>
+                <span class="text-[10px] text-yellow-400 font-bold">⭐ ${avgRating} (${ratingsList.length})</span>
+              </div>
+            </div>
+            <button onclick="visitStore('${shop.id}')" class="bg-green-500 hover:bg-green-600 text-black font-bold text-xs px-3.5 py-2.5 rounded-xl transition shadow whitespace-nowrap">
+              ${t.visitBtn}
+            </button>
+          </div>`;
+      });
+      localStorage.setItem('allPlatformShops', JSON.stringify(allShops));
+    }
+
+    function filterMarketplaceShops() { loadMarketplaceShops(document.getElementById('marketplaceSearchInput').value.trim()); }
+    function searchShopByCodeDirect() {
+      const q = document.getElementById('marketplaceSearchInput').value.trim();
+      const allShops = JSON.parse(localStorage.getItem('allPlatformShops') || '[]');
+      const found = allShops.find(s => s.shopCode === q || (s.name && s.name.toLowerCase().includes(q.toLowerCase())));
+      if (found) visitStore(found.id);
+      else alert("ಯಾವುದೇ ಅಂಗಡಿ ಪತ್ತೆಯಾಗಿಲ್ಲ.");
+    }
+
+    async function visitStore(shopId) {
+      await syncCloudDataToLocalStorage();
+      const allShops = JSON.parse(localStorage.getItem('allPlatformShops') || '[]');
+      activeShop = allShops.find(s => s.id === shopId);
+      if(!activeShop) return;
+
+      document.getElementById('custStoreName').innerText = activeShop.name;
+      document.getElementById('custStoreAddr').innerText = "📍 " + activeShop.addr;
+      const savedLogo = localStorage.getItem(`shop_logo_${activeShop.id}`) || activeShop.logo;
+      if (savedLogo) document.getElementById('custStoreLogo').src = savedLogo;
+
+      const storePhone = activeShop.phone || "919999999999";
+      document.getElementById('storeCallBtn').href = `tel:${storePhone}`;
+
+      cart = JSON.parse(localStorage.getItem(`persistent_cart_${activeShop.id}`) || '{}');
+      updateCartUI(); 
+      loadStoreProducts();
+      checkActiveOrderTracker();
+
+      document.getElementById('marketHomeView').classList.add('hidden');
+      document.getElementById('storeInteriorView').classList.remove('hidden');
+    }
+
+    function backToMarketplace() {
+      document.getElementById('storeInteriorView').classList.add('hidden');
+      document.getElementById('marketHomeView').classList.remove('hidden');
+      loadMarketplaceShops();
+      checkActiveOrderTracker();
+    }
+
+    function loadStoreProducts() {
+      if (!activeShop) return;
+      let prods = JSON.parse(localStorage.getItem(`prods_${activeShop.id}`) || '[]');
+      const container = document.getElementById('custProductGrid'); container.innerHTML = '';
+      if (prods.length === 0) { container.innerHTML = '<p class="text-center text-gray-500 text-xs py-8">ಯಾವುದೇ ವಸ್ತುಗಳು ಇಲ್ಲ.</p>'; return; }
+      
+      const t = langData[currentLang];
+      prods.forEach(prod => {
+        if (!prod.inStock) return;
+        const currentQty = cart[prod.name] || 0;
+        container.innerHTML += `
+          <div class="bg-gray-900 border border-gray-800 p-3 rounded-2xl flex items-center justify-between gap-3 shadow">
+            <img src="${prod.img}" class="w-16 h-16 rounded-xl object-cover bg-gray-800 border border-gray-700">
+            <div class="flex-1"><h4 class="font-bold text-sm text-white">${prod.name}</h4><p class="text-xs text-gray-400">${prod.qty || ''} ${prod.unit || ''}</p><p class="text-green-400 font-black text-sm mt-0.5">₹${prod.price}</p></div>
+            <div>
+              ${currentQty === 0 ? `<button onclick="changeQty('${prod.name}', 1)" class="bg-gray-800 hover:bg-green-500 hover:text-black text-green-400 text-xs font-bold px-3.5 py-2 rounded-xl border border-gray-700 transition">${t.addBtn}</button>` : `
+                <div class="flex items-center gap-2 bg-gray-800 border border-green-500/30 rounded-xl p-1">
+                  <button onclick="changeQty('${prod.name}', -1)" class="w-6 h-6 bg-gray-700 text-white rounded-lg font-bold">-</button>
+                  <span class="text-xs font-bold text-green-400 px-1">${currentQty}</span>
+                  <button onclick="changeQty('${prod.name}', 1)" class="w-6 h-6 bg-green-500 text-black rounded-lg font-bold">+</button>
+                </div>`}
+            </div>
+          </div>`;
+      });
+    }
+
+    function changeQty(prodName, delta) {
+      const cur = cart[prodName] || 0, next = cur + delta;
+      if (next <= 0) delete cart[prodName]; else cart[prodName] = next;
+      if(activeShop) localStorage.setItem(`persistent_cart_${activeShop.id}`, JSON.stringify(cart));
+      loadStoreProducts(); 
+      updateCartUI();
+    }
+
+    function updateCartUI() {
+      if (!activeShop) return;
+      const prods = JSON.parse(localStorage.getItem(`prods_${activeShop.id}`) || '[]');
+      let count = 0, total = 0;
+      for (const name in cart) {
+        const qty = cart[name], prod = prods.find(p => p.name === name);
+        if (prod) { count += qty; total += qty * Number(prod.price); }
+      }
+      const cartBar = document.getElementById('custCartBar');
+      if (count > 0) { 
+        cartBar.classList.remove('hidden'); 
+        document.getElementById('custCartCount').innerText = `${count} items`; 
+        document.getElementById('custCartTotal').innerText = `₹${total}`; 
+      } else {
+        cartBar.classList.add('hidden');
+      }
+    }
+
+    function checkActiveOrderTracker() {
+      const orders = JSON.parse(localStorage.getItem('shopOrders') || '[]');
+      const phone = localStorage.getItem('cust_verified_phone');
+      
+      const homeBanner = document.getElementById('homeLiveOrderBanner');
+      const storeTrackerBar = document.getElementById('liveOrderTrackerBar');
+      
+      const latest = orders.slice().reverse().find(o => o.customerPhone === phone && o.status !== 'Cancelled');
+      
+      if(latest) {
+        const allShops = JSON.parse(localStorage.getItem('allPlatformShops') || '[]');
+        const shopObj = allShops.find(s => s.id === latest.shopId);
+        const shopName = shopObj ? shopObj.name : "ಅಂಗಡಿ";
+
+        homeBanner.classList.remove('hidden');
+        document.getElementById('homeOrderShopNameText').innerText = `ಶಾಪ್: ${shopName} (₹${latest.total})`;
+        document.getElementById('homeOrderStatusBadge').innerText = latest.status === 'Paid' ? "ಪಾವತಿ ಪೂರ್ಣಗೊಂಡಿದೆ" : "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ";
+
+        if(activeShop && activeShop.id === latest.shopId) {
+          storeTrackerBar.classList.remove('hidden');
+          document.getElementById('liveOrderStatusText').innerText = latest.status === 'Paid' ? "ಪಾವತಿ ಪೂರ್ಣಗೊಂಡಿದೆ - ಪ್ಯಾಕಿಂಗ್" : "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ";
+          document.getElementById('liveOrderProgressBar').style.width = latest.status === 'Paid' ? "75%" : "35%";
+        } else if(storeTrackerBar) {
+          storeTrackerBar.classList.add('hidden');
+        }
+      } else {
+        homeBanner.classList.add('hidden');
+        if(storeTrackerBar) storeTrackerBar.classList.add('hidden');
+      }
+    }
+
+    async function cancelActiveOrder() {
+      if(!confirm("ಖಂಡಿತವಾಗಿ ಈ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಲು ಬಯಸುತ್ತೀರಾ?")) return;
+      const phone = localStorage.getItem('cust_verified_phone');
+      let orders = JSON.parse(localStorage.getItem('shopOrders') || '[]');
+      
+      const latest = orders.slice().reverse().find(o => o.customerPhone === phone && o.status !== 'Cancelled');
+      if(latest) {
+        latest.status = 'Cancelled';
+        localStorage.setItem('shopOrders', JSON.stringify(orders));
+        if(window.FB_DB) {
+          await window.FB_set(window.FB_ref(window.FB_DB, 'shopOrders'), orders);
+        }
+        alert("❌ ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಲಾಗಿದೆ.");
+        checkActiveOrderTracker();
+      }
+    }
+
+    function openRatingModal() {
+      const phone = localStorage.getItem('cust_verified_phone');
+      if(!phone) {
+        alert("⚠️ ರೇಟಿಂಗ್ ನೀಡಲು ದಯವಿಟ್ಟು ಮೊದಲು ಆರ್ಡರ್ ಮಾಡಿ ಲಾಗಿನ್ ಆಗಿ.");
+        return;
+      }
+
+      const ratingsList = JSON.parse(localStorage.getItem(`shop_ratings_${activeShop.id}`) || '[]');
+      const alreadyRated = ratingsList.find(r => r.phone === phone);
+
+      const bodyContent = document.getElementById('ratingModalBodyContent');
+      if(alreadyRated) {
+        bodyContent.innerHTML = `
+          <div class="py-6 space-y-2">
+            <p class="text-green-400 font-bold text-sm">✔ ನೀವು ಈಗಾಗಲೇ ಈ ಅಂಗಡಿಗೆ ರೇಟಿಂಗ್ ನೀಡಿದ್ದೀರಿ!</p>
+            <p class="text-yellow-400 text-lg">⭐ ${alreadyRated.stars} / 5 Stars</p>
+            <p class="text-xs text-gray-300 italic">"${alreadyRated.comment || 'ಯಾವುದೇ ಕಮೆಂಟ್ ಇಲ್ಲ'}"</p>
+          </div>`;
+      } else {
+        selectedRatingStars = 5;
+        bodyContent.innerHTML = `
+          <div class="flex justify-center gap-2 text-3xl" id="starContainer">
+            <button onclick="setRating(1)" class="star-btn text-yellow-400 transition" data-val="1">★</button>
+            <button onclick="setRating(2)" class="star-btn text-yellow-400 transition" data-val="2">★</button>
+            <button onclick="setRating(3)" class="star-btn text-yellow-400 transition" data-val="3">★</button>
+            <button onclick="setRating(4)" class="star-btn text-yellow-400 transition" data-val="4">★</button>
+            <button onclick="setRating(5)" class="star-btn text-yellow-400 transition" data-val="5">★</button>
+          </div>
+          <textarea id="reviewCommentInput" placeholder="ನಿಮ್ಮ ಅನಿಸಿಕೆ ತಿಳಿಸಿ..." class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-xs text-white outline-none h-20 resize-none"></textarea>
+          <button onclick="submitStoreRating()" id="submitRatingBtn" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-xl text-xs transition shadow">ರೇಟಿಂಗ್ ಸಬ್ಮಿಟ್ ಮಾಡಿ</button>`;
+        updateStarUI(5);
+      }
+      document.getElementById('storeRatingModal').classList.remove('hidden');
+    }
+
+    function closeRatingModal() { document.getElementById('storeRatingModal').classList.add('hidden'); }
+    function setRating(stars) { selectedRatingStars = stars; updateStarUI(stars); }
+    function updateStarUI(stars) {
+      const btns = document.querySelectorAll('.star-btn');
+      btns.forEach((btn, idx) => {
+        btn.className = idx < stars ? "star-btn text-yellow-400 transition text-3xl" : "star-btn text-gray-600 transition text-3xl";
+      });
+    }
+
+    async function submitStoreRating() {
+      if(!activeShop) return;
+      const phone = localStorage.getItem('cust_verified_phone');
+      const comment = document.getElementById('reviewCommentInput').value.trim();
+
+      let ratingsList = JSON.parse(localStorage.getItem(`shop_ratings_${activeShop.id}`) || '[]');
+      if(ratingsList.some(r => r.phone === phone)) {
+        alert("ನೀವು ಈಗಾಗಲೇ ರೇಟಿಂಗ್ ನೀಡಿದ್ದೀರಿ!");
+        closeRatingModal();
+        return;
+      }
+
+      ratingsList.push({ phone: phone, stars: selectedRatingStars, comment: comment, date: new Date().toLocaleDateString() });
+      localStorage.setItem(`shop_ratings_${activeShop.id}`, JSON.stringify(ratingsList));
+
+      if(window.FB_DB) {
+        await window.FB_set(window.FB_ref(window.FB_DB, `shop_ratings_${activeShop.id}`), ratingsList);
+      }
+
+      alert("✔ ನಿಮ್ಮ ರೇಟಿಂಗ್ ಯಶಸ್ವಿಯಾಗಿ ಸಬ್ಮಿಟ್ ಆಯಿತು!");
+      closeRatingModal();
+      loadMarketplaceShops();
+    }
+
+    let foundCustomerPhoneForKhata = null;
+    async function openStoreCustomerKhataModal() {
+      if(!activeShop) return;
+      await syncCloudDataToLocalStorage();
+      const phone = localStorage.getItem('cust_verified_phone');
+      
+      if(!phone) {
+        alert("⚠️ ದಯವಿಟ್ಟು ಮೊದಲು ಆರ್ಡರ್ ಮಾಡುವಾಗ ಅಥವಾ ಪ್ರೊಫೈಲ್‌ನಲ್ಲಿ ಲಾಗಿನ್ ಆಗಿ.");
+        return;
+      }
+
+      foundCustomerPhoneForKhata = phone;
+      document.getElementById('khataModalPhoneDisplay').innerText = phone;
+      document.getElementById('billShopName').innerText = activeShop.name;
+      document.getElementById('billShopAddr').innerText = `ವಿಳಾಸ: ${activeShop.addr} | ಕೋಡ್: ${activeShop.shopCode}`;
+
+      const allLedgers = JSON.parse(localStorage.getItem(`ledger_${activeShop.id}`) || '{}');
+      const cust = allLedgers[phone];
+
+      const entriesContainer = document.getElementById('billEntriesContainer');
+
+      if(!cust || cust.totalDue === 0) {
+        document.getElementById('billCustName').innerText = cust ? cust.name : "ಗ್ರಾಹಕರು";
+        document.getElementById('billCustPhone').innerText = phone;
+        entriesContainer.innerHTML = `<p class="text-center text-green-600 font-bold py-4">✔ ಈ ಅಂಗಡಿಯಲ್ಲಿ ಯಾವುದೇ ಬಾಕಿ ಉದ್ರಿ ಇಲ್ಲ!</p>`;
+        document.getElementById('billTotalDue').innerText = "₹0";
+        document.getElementById('khataPaymentSection').classList.add('hidden');
+        document.getElementById('storeCustomerKhataModal').classList.remove('hidden');
+        return;
+      }
+
+      document.getElementById('billCustName').innerText = cust.name;
+      document.getElementById('billCustPhone').innerText = cust.phone;
+      document.getElementById('billTotalDue').innerText = `₹${cust.totalDue}`;
+
+      let entriesHtml = "";
+      cust.entries.forEach(en => {
+        const isPay = en.amount < 0;
+        entriesHtml += `
+          <div class="border-b border-dashed border-gray-200 pb-1.5 mb-1.5">
+            <p class="text-[9px] text-gray-500">${en.date}</p>
+            <div class="flex justify-between font-bold text-gray-800">
+              <span>${en.items}</span>
+              <span class="${isPay ? 'text-green-600' : 'text-red-600'}">${isPay ? '-₹' + Math.abs(en.amount) : '₹' + en.amount}</span>
+            </div>
+          </div>`;
+      });
+      entriesContainer.innerHTML = entriesHtml;
+
+      document.getElementById('khataPaymentSection').classList.remove('hidden');
+      const sellerQr = localStorage.getItem(`seller_qr_${activeShop.id}`) || activeShop.paymentQr;
+      if(sellerQr) {
+        document.getElementById('khataPaymentQrImg').src = sellerQr;
+        document.getElementById('khataQrAvailable').classList.remove('hidden');
+        document.getElementById('khataQrNotAvailable').classList.add('hidden');
+      } else {
+        document.getElementById('khataQrAvailable').classList.add('hidden');
+        document.getElementById('khataQrNotAvailable').classList.remove('hidden');
+      }
+
+      document.getElementById('storeCustomerKhataModal').classList.remove('hidden');
+    }
+
+    function closeStoreCustomerKhataModal() { document.getElementById('storeCustomerKhataModal').classList.add('hidden'); }
+
+    async function settleKhataOnline() {
+      if(!foundCustomerPhoneForKhata || !activeShop) return;
+      let allLedgers = JSON.parse(localStorage.getItem(`ledger_${activeShop.id}`) || '{}');
+      let cust = allLedgers[foundCustomerPhoneForKhata];
+      if(!cust) return;
+
+      const paidAmount = cust.totalDue;
+      cust.totalDue = 0;
+      cust.status = 'Settled';
+      cust.entries.push({
+        date: new Date().toLocaleString(),
+        items: `ಆನ್‌ಲೈನ್ ಪಾವತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ`,
+        amount: -paidAmount,
+        paid: paidAmount,
+        type: 'Fully Settled'
+      });
+
+      localStorage.setItem(`ledger_${activeShop.id}`, JSON.stringify(allLedgers));
+      if(window.FB_DB) {
+        await window.FB_set(window.FB_ref(window.FB_DB, `ledger_${activeShop.id}`), allLedgers);
+      }
+      alert("✔ ಪಾವತಿ ವಿನಂತಿ ಅಂಗಡಿಗೆ ತಲುಪಿದೆ!");
+      closeStoreCustomerKhataModal();
+    }
+
+    function openCustomerProfileModal() {
+      loadSavedProfile();
+      document.getElementById('customerProfileModal').classList.remove('hidden');
+    }
+    function closeCustomerProfileModal() { document.getElementById('customerProfileModal').classList.add('hidden'); }
+
+    function handleProfilePicUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('profileAvatarImg').src = e.target.result;
+          localStorage.setItem('cust_profile_pic', e.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function saveProfileDetails() {
+      const name = document.getElementById('profInputName').value.trim();
+      localStorage.setItem('cust_profile_name', name);
+      renderCustomerExpensesTracker();
+    }
+
+    function loadSavedProfile() {
+      const savedPic = localStorage.getItem('cust_profile_pic');
+      const savedName = localStorage.getItem('cust_profile_name');
+      const verifiedPhone = localStorage.getItem('cust_verified_phone');
+      
+      if(savedPic) document.getElementById('profileAvatarImg').src = savedPic;
+      if(savedName) document.getElementById('profInputName').value = savedName;
+      if(verifiedPhone) {
+        document.getElementById('profInputPhone').value = verifiedPhone;
+        renderCustomerExpensesTracker();
+      } else {
+        document.getElementById('profInputPhone').value = "ಲಾಗಿನ್ ಆಗಿಲ್ಲ (Not Logged In)";
+        document.getElementById('trackerTotalSpent').innerText = "₹0";
+        document.getElementById('trackerOrdersList').innerHTML = '<p class="text-xs text-amber-400 text-center py-4">ದಯವಿಟ್ಟು ಮೊದಲು ಆರ್ಡರ್ ಮಾಡುವಾಗ OTP ಮೂಲಕ ಲಾಗಿನ್ ಆಗಿ.</p>';
+      }
+    }
+
+    function renderCustomerExpensesTracker() {
+      const phone = localStorage.getItem('cust_verified_phone');
+      if(!phone) return;
+      
+      const timeRange = document.getElementById('expenseTimeRange').value;
+      const allOrders = JSON.parse(localStorage.getItem('shopOrders') || '[]');
+      const custOrders = allOrders.filter(o => o.customerPhone === phone && o.status !== 'Cancelled');
+
+      let filteredOrders = custOrders;
+      const now = new Date();
+      if(timeRange === 'monthly') {
+        filteredOrders = custOrders.filter(o => {
+          const d = new Date(o.date);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+      } else if(timeRange === 'yearly') {
+        filteredOrders = custOrders.filter(o => {
+          const d = new Date(o.date);
+          return d.getFullYear() === now.getFullYear();
+        });
+      }
+
+      let totalSpent = 0;
+      let listHtml = "";
+      filteredOrders.slice().reverse().forEach(ord => {
+        totalSpent += Number(ord.total);
+        listHtml += `
+          <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 text-xs space-y-1">
+            <div class="flex justify-between font-bold text-white">
+              <span>ಶಾಪ್ ಕೋಡ್: ${ord.shopCode}</span>
+              <span class="text-green-400">₹${ord.total}</span>
+            </div>
+            <p class="text-gray-300">ವಸ್ತುಗಳು: ${ord.itemsSummary}</p>
+            <div class="flex justify-between text-[10px] text-gray-400 pt-1 border-t border-gray-800">
+              <span>${ord.date}</span>
+              <span class="text-cyan-400 font-bold">${ord.paymentType.toUpperCase()}</span>
+            </div>
+          </div>`;
+      });
+
+      document.getElementById('trackerTotalSpent').innerText = `₹${totalSpent}`;
+      document.getElementById('trackerOrdersList').innerHTML = listHtml || '<p class="text-xs text-gray-500 text-center py-4">ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ಖರ್ಚುಗಳಿಲ್ಲ.</p>';
+    }
+
+    function openCheckout(mode) {
+      if (!activeShop) return;
+      checkoutMode = mode;
+      document.getElementById('otpBoxContainer').classList.add('hidden');
+      document.getElementById('custOrderPhone').value = '';
+      document.getElementById('custOtpInput').value = '';
+
+      const savedPhone = localStorage.getItem('cust_verified_phone');
+      const savedName = localStorage.getItem('cust_profile_name');
+      if(savedPhone) document.getElementById('custOrderPhone').value = savedPhone;
+      if(savedName) document.getElementById('custOrderName').value = savedName;
+
+      const prods = JSON.parse(localStorage.getItem(`prods_${activeShop.id}`) || '[]');
+      let summaryHtml = "", total = 0;
+      for (const name in cart) {
+        const qty = cart[name], prod = prods.find(p => p.name === name);
+        if (prod) { summaryHtml += `<div class="flex justify-between"><span>${name} x ${qty}</span><span>₹${qty * Number(prod.price)}</span></div>`; total += qty * Number(prod.price); }
+      }
+      document.getElementById('checkoutSummaryText').innerHTML = summaryHtml;
+      document.getElementById('modalTotalAmount').innerText = `₹${total}`;
+      document.getElementById('custCheckoutModal').classList.remove('hidden');
+    }
+
+    function closeCheckout() { document.getElementById('custCheckoutModal').classList.add('hidden'); }
+
+    function sendOtpForCheckout() {
+      const phone = document.getElementById('custOrderPhone').value.trim();
+      if(phone.length < 10) { alert("ಸರಿಯಾದ 10 ಅಂಕಿಗಳ ನಂಬರ್ ಹಾಕಿ!"); return; }
+      document.getElementById('otpBoxContainer').classList.remove('hidden');
+      alert("🔒 OTP ಕಳುಹಿಸಲಾಗಿದೆ! (OTP: 1234)");
+    }
+
+    function toggleUpiQrSection() {
+      const type = document.getElementById('custOrderPayType').value;
+      const qrSection = document.getElementById('shopUpiQrSection');
+      if(type === 'upi') {
+        qrSection.classList.remove('hidden');
+        const sellerQr = localStorage.getItem(`seller_qr_${activeShop.id}`) || activeShop.paymentQr;
+        if(sellerQr) {
+          document.getElementById('custPayQrImg').src = sellerQr;
+          document.getElementById('qrAvailableBox').classList.remove('hidden');
+          document.getElementById('qrNotAvailableBox').classList.add('hidden');
+        } else {
+          document.getElementById('qrAvailableBox').classList.add('hidden');
+          document.getElementById('qrNotAvailableBox').classList.remove('hidden');
+        }
+      } else {
+        qrSection.classList.add('hidden');
+      }
+    }
+
+    async function confirmAndSendOrder() {
+      const name = document.getElementById('custOrderName').value.trim();
+      const phone = document.getElementById('custOrderPhone').value.trim();
+      const otp = document.getElementById('custOtpInput').value.trim();
+      const addr = document.getElementById('custOrderAddr').value.trim();
+      const payType = checkoutMode === 'whatsapp' ? 'whatsapp' : document.getElementById('custOrderPayType').value;
+
+      if (!name || !phone || !addr) { alert("ದಯವಿಟ್ಟು ಎಲ್ಲಾ ವಿವರಗಳನ್ನು ಭರ್ತಿ ಮಾಡಿ."); return; }
+      if (otp !== '1234') { alert("❌ ದಯವಿಟ್ಟು ಸರಿಯಾದ OTP (1234) ನಮೂದಿಸಿ!"); return; }
+
+      localStorage.setItem('cust_verified_phone', phone);
+      localStorage.setItem('cust_profile_name', name);
+
+      const prods = JSON.parse(localStorage.getItem(`prods_${activeShop.id}`) || '[]');
+      let summaryText = "", total = 0;
+      for (const itemName in cart) {
+        const qty = cart[itemName], prod = prods.find(p => p.name === itemName);
+        if (prod) { summaryText += `${itemName} x ${qty}, `; total += qty * Number(prod.price); }
+      }
+
+      const newOrder = {
+        id: 'ORD_' + Date.now(), shopId: activeShop.id, shopCode: activeShop.shopCode,
+        customerName: name, customerPhone: phone, customerAddr: addr,
+        itemsSummary: summaryText, total: total, paymentType: payType,
+        status: payType === 'upi' ? 'Paid' : (payType === 'udri' ? 'Udri' : 'Placed'),
+        date: new Date().toLocaleString()
+      };
+
+      const orders = JSON.parse(localStorage.getItem('shopOrders') || '[]');
+      orders.push(newOrder); 
+      localStorage.setItem('shopOrders', JSON.stringify(orders));
+
+      if(payType === 'udri') {
+        let allLedgers = JSON.parse(localStorage.getItem(`ledger_${activeShop.id}`) || '{}');
+        if(!allLedgers[phone]) { allLedgers[phone] = { name: name, phone: phone, entries: [], totalDue: 0, status: 'Due' }; }
+        allLedgers[phone].entries.push({ date: new Date().toLocaleString(), items: summaryText, amount: total, paid: 0, type: 'ಆನ್ಲೈನ್ ಆರ್ಡರ್ ಉದ್ರಿ' });
+        allLedgers[phone].totalDue += total;
+        allLedgers[phone].status = 'Due';
+        localStorage.setItem(`ledger_${activeShop.id}`, JSON.stringify(allLedgers));
+        
+        if(window.FB_DB) {
+          await window.FB_set(window.FB_ref(window.FB_DB, `ledger_${activeShop.id}`), allLedgers);
+        }
+      }
+
+      if(window.FB_DB) {
+        await window.FB_set(window.FB_ref(window.FB_DB, 'shopOrders'), orders);
+      }
+
+      if (checkoutMode === 'whatsapp' || payType === 'whatsapp') {
+        const sellerPhone = activeShop.phone || "919999999999";
+        const waText = encodeURIComponent(`🛒 ಹೊಸ ಆರ್ಡರ್ ಬಂದಿದೆ!\n\n👤 ಹೆಸರು: ${name}\n📞 ಫೋನ್: ${phone} (OTP Verified)\n📍 ವಿಳಾಸ: ${addr}\n📦 ವಸ್ತುಗಳು: ${summaryText}\n💰 ಒಟ್ಟು ಮೊತ್ತ: ₹${total}`);
+        window.open(`https://wa.me/${sellerPhone}?text=${waText}`, '_blank');
+      }
+
+      cart = {};
+      localStorage.removeItem(`persistent_cart_${activeShop.id}`);
+      closeCheckout(); 
+      updateCartUI(); 
+      loadStoreProducts();
+      checkActiveOrderTracker();
+      alert("✔ ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಕನ್ಫರ್ಮ್ ಆಯಿತು!");
+    }
+  </script>
+</body>
+</html>

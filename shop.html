@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title id="pageTitle">Tasko Dukaan - Local Marketplace</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for Smart Tracker Mini Graph -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- HTML5-Qrcode library for real camera QR scanning -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <!-- QRCode.js for generating unique customer digital ID QR code -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   
   <!-- Firebase SDKs -->
   <script type="module">
@@ -36,52 +42,80 @@
     window.FB_child = child;
   </script>
 </head>
-<body class="bg-gray-950 font-sans text-gray-100 min-h-screen pb-24">
+<body id="appBodyTheme" class="bg-gray-950 font-sans text-gray-100 min-h-screen pb-36">
 
-  <div class="max-w-md mx-auto bg-gray-900 min-h-screen shadow-2xl border-x border-gray-800 flex flex-col relative">
+  <div class="max-w-md mx-auto bg-gray-900 min-h-screen shadow-2xl border-x border-gray-800 flex flex-col relative pb-20">
 
-    <!-- TOP BAR WITH LOGO & 3-DOT MENU -->
-    <div class="bg-gray-950 px-4 py-3 flex justify-between items-center border-b border-gray-800 relative">
+    <!-- TOP BAR WITH LOGO & CLEAN PROFESSIONAL 3-DOT MENU + NOTIFICATION BELL -->
+    <div class="bg-gray-950 px-4 py-3 flex justify-between items-center border-b border-gray-800 relative z-30">
       <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-green-500 to-emerald-700 flex items-center justify-center font-black text-black text-sm shadow">TD</div>
+        <div id="topLogoBadge" class="w-8 h-8 rounded-xl bg-gradient-to-tr from-green-500 to-emerald-700 flex items-center justify-center font-black text-black text-sm shadow">TD</div>
         <span id="txtPlatformName" class="font-black text-white text-sm">Tasko Dukaan</span>
       </div>
 
-      <!-- 3-Dot Menu Button -->
-      <button onclick="toggleThreeDotMenu()" class="w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white rounded-xl flex items-center justify-center font-black text-base shadow border border-gray-700 transition">
-        ⋮
-      </button>
-
-      <!-- 3-Dot Dropdown Menu Content -->
-      <div id="threeDotDropdown" class="hidden absolute top-14 right-4 bg-gray-900 border border-gray-700 w-60 rounded-2xl shadow-2xl p-3 z-50 space-y-3">
-        <button onclick="openCustomerProfileModal(); toggleThreeDotMenu();" class="w-full text-left bg-gray-800 hover:bg-gray-700 text-cyan-400 font-bold px-3 py-2.5 rounded-xl text-xs transition flex items-center gap-2">
-          <span>👤</span> <span id="menuTxtProfile">ಪ್ರೊಫೈಲ್ & ಸ್ಮಾರ್ಟ್ ಟ್ರ್ಯಾಕರ್</span>
+      <div class="flex items-center gap-2">
+        <button onclick="openCustomerNotificationsModal()" class="relative w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white rounded-xl flex items-center justify-center text-sm shadow border border-gray-700 transition" title="Notifications">
+          🔔
+          <span id="notifBadgeDot" class="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full hidden"></span>
         </button>
-        
-        <div class="border-t border-gray-800 pt-2 space-y-1.5">
-          <label class="text-[10px] text-gray-400 font-bold block px-1" id="menuTxtLangTitle">ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ / Language:</label>
-          <select id="globalLangSelect" onchange="changeLanguage(this.value); toggleThreeDotMenu();" class="w-full bg-gray-800 border border-gray-700 p-2 rounded-xl text-xs text-green-400 font-bold outline-none">
-            <option value="kn">ಕನ್ನಡ (Kannada)</option>
-            <option value="en">English</option>
-            <option value="hi">हिंदी (Hindi)</option>
-          </select>
+
+        <button onclick="toggleThreeDotMenu(event)" class="w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white rounded-xl flex items-center justify-center font-black text-base shadow border border-gray-700 transition">
+          ⋮
+        </button>
+      </div>
+
+      <!-- Professional Clean Menu -->
+      <div id="threeDotDropdown" class="hidden absolute top-14 right-4 bg-gray-900 border border-gray-700 w-56 rounded-2xl shadow-2xl p-3 z-50 space-y-2.5">
+        <button onclick="openLanguageModal();" class="w-full text-left text-xs text-white font-bold hover:bg-gray-800 px-2.5 py-2 rounded-xl flex justify-between items-center transition">
+          <span id="menuTxtLang">🌐 ಭಾಷೆ (Language)</span>
+          <span class="text-green-400">➔</span>
+        </button>
+
+        <div class="border-t border-gray-800 pt-2 px-1 space-y-1.5">
+          <label class="text-[10px] text-gray-400 font-bold block" id="menuTxtThemeLbl">ಥೀಮ್ (Theme):</label>
+          <div class="flex gap-3 py-1">
+            <button onclick="changeAppTheme('green'); closeThreeDotMenu();" class="w-6 h-6 rounded-full bg-green-500 border-2 border-white shadow hover:scale-110 transition" title="Green"></button>
+            <button onclick="changeAppTheme('orange'); closeThreeDotMenu();" class="w-6 h-6 rounded-full bg-orange-500 border-2 border-transparent shadow hover:scale-110 transition" title="Orange"></button>
+            <button onclick="changeAppTheme('purple'); closeThreeDotMenu();" class="w-6 h-6 rounded-full bg-purple-600 border-2 border-transparent shadow hover:scale-110 transition" title="Purple"></button>
+          </div>
+        </div>
+
+        <div class="border-t border-gray-800 pt-2 space-y-1">
+          <button onclick="openCustomModal('ℹ️ ಆಪ್ ಬಗ್ಗೆ', 'Tasko Dukaan v3.0 - ಲೋಕಲ್ ಡಿಜಿಟಲ್ ಮಾರ್ಕೆಟ್‌ಪ್ಲೇಸ್ ಮತ್ತು ಖಾತಾ ಸೂಟ್.'); closeThreeDotMenu();" class="w-full text-left text-xs text-gray-300 hover:text-white px-2 py-1.5 rounded-lg font-semibold" id="menuTxtAbout">ℹ️ ಆಪ್ ಬಗ್ಗೆ</button>
+          <button onclick="openCustomModal('🔒 ಗೌಪ್ಯತಾ ನೀತಿ', 'ನಿಮ್ಮ ಎಲ್ಲಾ ಆರ್ಡರ್‌ಗಳು ಮತ್ತು ಡೇಟಾ ಸಂಪೂರ್ಣ ಸುರಕ್ಷಿತವಾಗಿದೆ.'); closeThreeDotMenu();" class="w-full text-left text-xs text-gray-300 hover:text-white px-2 py-1.5 rounded-lg font-semibold" id="menuTxtPrivacy">🔒 ಗೌಪ್ಯತಾ ನೀತಿ</button>
         </div>
       </div>
     </div>
 
-    <!-- HOME PAGE PERSISTENT LIVE ORDER TRACKER BANNER (BLINKING) -->
-    <div id="homeLiveOrderBanner" class="hidden bg-gradient-to-r from-amber-600 to-orange-700 px-4 py-3 text-xs text-white shadow-lg border-b border-orange-500/50 flex flex-col gap-2">
+    <!-- CUSTOM APP ALERT MODAL -->
+    <div id="customAppAlertModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
+      <div class="bg-gray-900 border-2 border-blue-600 w-full max-w-sm rounded-3xl p-6 text-center space-y-4 shadow-2xl">
+        <div class="w-14 h-14 bg-blue-600/20 text-blue-400 border border-blue-500/40 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+          ℹ️
+        </div>
+        <div>
+          <h3 id="customAlertTitle" class="text-lg font-black text-white">ಸೂಚನೆ</h3>
+          <p id="customAlertMessage" class="text-xs text-gray-300 mt-2 leading-relaxed">ಸಂದೇಶ ಇಲ್ಲಿದೆ...</p>
+        </div>
+        <button onclick="document.getElementById('customAppAlertModal').classList.add('hidden')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow text-xs">
+          ಸರಿ (OK)
+        </button>
+      </div>
+    </div>
+
+    <!-- HOME PAGE PERSISTENT LIVE ORDER TRACKER BANNER -->
+    <div id="homeLiveOrderBanner" class="hidden bg-gradient-to-r from-amber-600 to-orange-700 px-4 py-3 text-xs text-white shadow-lg border-b border-orange-500/50 flex flex-col gap-2 z-20">
       <div class="flex justify-between items-center">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 bg-yellow-300 rounded-full animate-ping"></span>
-          <span class="font-black tracking-wide">📦 ಲೈವ್ ಆರ್ಡರ್ ಟ್ರ್ಯಾಕರ್</span>
+          <span id="homeOrderUniqueIdText" class="font-black tracking-wide">📦 ಲೈವ್ ಆರ್ಡರ್ (#---)</span>
         </div>
-        <span id="homeOrderStatusBadge" class="bg-black/30 text-yellow-200 font-bold px-2 py-0.5 rounded text-[10px]">ಸ್ವೀಕರಿಸಲಾಗಿದೆ</span>
+        <span id="homeOrderStatusBadge" class="bg-black/30 text-yellow-200 font-bold px-2 py-0.5 rounded text-[10px]">Placed</span>
       </div>
       <div class="flex justify-between items-center text-[11px] text-orange-100">
         <span id="homeOrderShopNameText">ಶಾಪ್: ---</span>
-        <div class="flex gap-2">
-          <button onclick="cancelActiveOrder()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] shadow transition">
+        <div class="flex gap-2" id="homeCancelBtnContainer">
+          <button onclick="openCancelReasonModal()" id="homeCancelActionBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] shadow transition">
             ❌ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಿ
           </button>
         </div>
@@ -90,7 +124,7 @@
 
     <!-- VIEW 1: MARKETPLACE HOME -->
     <div id="marketHomeView" class="flex flex-col flex-1">
-      <div class="bg-gradient-to-r from-green-600 to-emerald-800 p-5 text-center space-y-2 rounded-b-3xl shadow-lg">
+      <div id="mainBannerHeader" class="bg-gradient-to-r from-green-600 to-emerald-800 p-5 text-center space-y-2 rounded-b-3xl shadow-lg transition-all duration-300">
         <span id="txtBannerTag" class="bg-black/20 text-green-200 text-[10px] font-bold px-3 py-1 rounded-full border border-green-400/30">⚡ 3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ</span>
         <h1 id="txtMainTitle" class="text-xl font-black text-white">ನಿಮ್ಮ ಊರಿನ ಎಲ್ಲಾ ಅಂಗಡಿಗಳು ಒಂದೇ ಕಡೆ</h1>
         <p id="txtSubTitle" class="text-xs text-green-100">ಮೆಚ್ಚಿನ ಅಂಗಡಿ ಆಯ್ಕೆಮಾಡಿ ಮನೆಯಿಂದಲೇ ಆರ್ಡರ್ ಮಾಡಿ!</p>
@@ -104,15 +138,20 @@
           </button>
         </div>
 
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-2">
           <h2 id="txtStoresHeading" class="font-bold text-white text-sm">ಲಭ್ಯವಿರುವ ಲೋಕಲ್ ಅಂಗಡಿಗಳು</h2>
-          <button onclick="toggleFavoriteFilter()" id="btnFavFilter" class="bg-gray-800 hover:bg-gray-700 text-pink-400 border border-pink-500/30 font-bold text-[11px] px-3 py-1.5 rounded-xl transition shadow flex items-center gap-1.5">
-            ❤️ ನನ್ನ ಫೇವರೆಟ್ಸ್
-          </button>
+          <div class="flex gap-1.5">
+            <button onclick="openQrScannerModal()" class="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold text-[11px] px-3 py-1.5 rounded-xl transition shadow flex items-center gap-1">
+              📷 QR ಸ್ಕ್ಯಾನ್
+            </button>
+            <button onclick="toggleFavoriteFilter()" id="btnFavFilter" class="bg-gray-800 hover:bg-gray-700 text-pink-400 border border-pink-500/30 font-bold text-[11px] px-3 py-1.5 rounded-xl transition shadow flex items-center gap-1.5">
+              ❤️ ಫೇವರೆಟ್ಸ್
+            </button>
+          </div>
         </div>
       </div>
 
-      <div class="p-4 pt-0 flex-1 space-y-3">
+      <div class="p-4 pt-0 flex-1 space-y-3 pb-16">
         <div id="marketplaceShopsGrid" class="space-y-3"></div>
       </div>
     </div>
@@ -129,7 +168,6 @@
           </button>
         </div>
         <div class="absolute top-3 right-3 flex items-center gap-1.5">
-          <!-- DIRECT CALL / CONTACT STORE BUTTON -->
           <a id="storeCallBtn" href="tel:919999999999" class="bg-green-500 hover:bg-green-600 text-black font-bold text-xs px-3 py-1.5 rounded-full shadow transition flex items-center gap-1">
             📞 ಕರೆ ಮಾಡಿ
           </a>
@@ -142,22 +180,30 @@
           <img id="custStoreLogo" src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=500" class="w-14 h-14 rounded-2xl object-cover border-2 border-gray-700 bg-gray-800 shadow">
           <div class="flex-1">
             <h1 id="custStoreName" class="text-lg font-black text-white drop-shadow">ಅಂಗಡಿ ಹೆಸರು</h1>
-            <p id="custStoreAddr" class="text-gray-300 text-xs font-semibold">📍 ವಿಳಾಸ</p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <p id="custStoreAddr" class="text-gray-300 text-xs font-semibold">📍 ವಿಳಾಸ</p>
+              <a id="custStoreMapLink" href="#" target="_blank" class="text-[10px] bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded font-bold border border-cyan-500/30 hidden">🗺️ ಮ್ಯಾಪ್ ನೋಡಿ</a>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- STORE INTERIOR LIVE TRACKER & CANCEL -->
+      <!-- STORE CLOSED / HOLIDAY NOTICE BANNER -->
+      <div id="storeClosedNoticeBanner" class="hidden bg-red-600 text-white px-4 py-2.5 text-xs font-bold text-center">
+        🔴 <span id="storeClosedNoticeText">ಅಂಗಡಿ ಸದ್ಯಕ್ಕೆ ಬಂದ್ ಇದೆ!</span>
+      </div>
+
+      <!-- STORE INTERIOR LIVE TRACKER & REAL-TIME STATUS -->
       <div id="liveOrderTrackerBar" class="hidden bg-cyan-950/90 border-b border-cyan-500/40 p-3 text-xs space-y-1.5 shadow-md">
         <div class="flex justify-between font-bold text-cyan-300">
-          <span>📦 ಲೈವ್ ಆರ್ಡರ್ ಸ್ಟೇಟಸ್:</span>
-          <span id="liveOrderStatusText" class="text-green-400">ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ</span>
+          <span id="storeLiveTrackerTitle">📦 ಲೈವ್ ಆರ್ಡರ್ ಸ್ಟೇಟಸ್:</span>
+          <span id="liveOrderStatusText" class="text-green-400">Placed</span>
         </div>
         <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
           <div id="liveOrderProgressBar" class="bg-green-500 h-full w-1/3 transition-all duration-500"></div>
         </div>
-        <div class="flex justify-end pt-1">
-          <button onclick="cancelActiveOrder()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1 rounded-lg text-[10px] shadow transition">
+        <div class="flex justify-end pt-1" id="storeCancelBtnContainer">
+          <button onclick="openCancelReasonModal()" id="storeCancelActionBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1 rounded-lg text-[10px] shadow transition">
             ❌ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಿ
           </button>
         </div>
@@ -168,17 +214,23 @@
         <span class="text-gray-300 font-semibold">ಫಾಸ್ಟ್ ಸರ್ವೀಸ್</span>
       </div>
 
-      <!-- Products & Rating Section -->
-      <div class="p-4 flex-1 space-y-4">
-        <div class="flex justify-between items-center">
-          <h2 id="txtProductsHeading" class="font-bold text-white text-base">ಅಂಗಡಿಯ ವಸ್ತುಗಳು</h2>
-          <button onclick="openRatingModal()" class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold text-[10px] px-2.5 py-1 rounded-xl">⭐ ರೇಟಿಂಗ್ ನೀಡಿ</button>
+      <!-- IN-STORE PRODUCT SEARCH & PRODUCTS SECTION -->
+      <div class="p-4 flex-1 space-y-3 pb-28">
+        <div class="flex justify-between items-center gap-2">
+          <h2 id="txtProductsHeading" class="font-bold text-white text-base whitespace-nowrap">ಅಂಗಡಿಯ ವಸ್ತುಗಳು</h2>
+          <button onclick="openRatingModal()" class="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold text-[10px] px-2.5 py-1 rounded-xl">⭐ ರೇಟಿಂಗ್</button>
         </div>
+        
+        <!-- IN-STORE SEARCH BOX -->
+        <div>
+          <input type="text" id="inStoreProductSearchInput" onkeyup="filterInStoreProducts()" placeholder="🔍 ಈ ಅಂಗಡಿಯಲ್ಲಿ ವಸ್ತುಗಳನ್ನು ಹುಡುಕಿ..." class="w-full bg-gray-800 border border-gray-700 p-3 rounded-2xl text-xs text-white outline-none focus:border-green-500 shadow">
+        </div>
+
         <div id="custProductGrid" class="space-y-3"></div>
       </div>
 
       <!-- Bottom Floating Cart Bar -->
-      <div id="custCartBar" class="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-gray-900/95 border-t border-gray-800 p-4 backdrop-blur flex justify-between items-center hidden shadow-2xl z-40">
+      <div id="custCartBar" class="absolute bottom-16 left-0 right-0 max-w-md mx-auto bg-gray-900/95 border-t border-gray-800 p-4 backdrop-blur flex justify-between items-center hidden shadow-2xl z-40">
         <div>
           <p id="custCartCount" class="text-xs text-gray-400">0 ವಸ್ತುಗಳು</p>
           <h3 id="custCartTotal" class="text-xl font-black text-green-400">₹0</h3>
@@ -196,11 +248,120 @@
 
   </div>
 
+  <!-- FIXED BOTTOM NAVIGATION BAR -->
+  <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-gray-900/95 border-t border-gray-800 backdrop-blur px-4 py-2.5 flex justify-around items-center z-50 shadow-2xl">
+    <button onclick="bottomNavAction('home')" class="flex flex-col items-center gap-1 text-green-400 transition" id="navBtnHome">
+      <span class="text-lg">🏠</span>
+      <span class="text-[10px] font-bold" id="navTxtHome">ಹೋಮ್</span>
+    </button>
+    <button onclick="bottomNavAction('orders')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-green-400 transition" id="navBtnOrders">
+      <span class="text-lg">📦</span>
+      <span class="text-[10px] font-bold" id="navTxtOrders">ಆರ್ಡರ್ಸ್</span>
+    </button>
+    <button onclick="bottomNavAction('profile')" class="flex flex-col items-center gap-1 text-gray-400 hover:text-green-400 transition" id="navBtnProfile">
+      <span class="text-lg">👤</span>
+      <span class="text-[10px] font-bold" id="navTxtProfile">ಪ್ರೊಫೈಲ್</span>
+    </button>
+  </div>
+
+  <!-- MODAL: LIVE CAMERA QR SCANNER & MANUAL CODE -->
+  <div id="qrScannerModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border-2 border-cyan-500 w-full max-w-sm rounded-3xl p-5 text-center space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+        <h3 class="font-bold text-white text-sm">📷 ಲೈವ್ ಕ್ಯಾಮೆರಾ QR / ಶಾಪ್ ಕೋಡ್</h3>
+        <button onclick="closeQrScannerModal()" class="text-gray-400 text-base font-bold">✕</button>
+      </div>
+      
+      <!-- Live Camera Stream Box -->
+      <div id="reader" class="w-full bg-black rounded-2xl overflow-hidden border border-gray-700 min-h-[200px]"></div>
+
+      <p class="text-[11px] text-gray-400">ಅಥವಾ 4 ಅಂಕಿಯ ಶಾಪ್ ಕೋಡ್ ನಮೂದಿಸಿ:</p>
+      <input type="text" id="manualQrInput" placeholder="ಉದಾ: 1482" class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-center text-sm text-cyan-400 font-mono font-bold outline-none">
+      <button onclick="submitManualQrScan()" class="w-full bg-cyan-500 hover:bg-cyan-600 text-black font-bold py-3 rounded-xl transition shadow text-xs">
+        ಅಂಗಡಿಗೆ ಭೇಟಿ ನೀಡಿ ➔
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: NOTIFICATIONS POPUP -->
+  <div id="customerNotificationsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+        <h3 class="font-bold text-white text-base">🔔 ಅಡ್ಮಿನ್ ನೋಟಿಫಿಕೇಶನ್‌ಗಳು & ಆಫರ್ಸ್</h3>
+        <button onclick="closeCustomerNotificationsModal()" class="text-gray-400 text-lg">✕</button>
+      </div>
+      <div id="customerNotificationsList" class="space-y-3">
+        <p class="text-xs text-gray-500 text-center py-6">ಯಾವುದೇ ಹೊಸ ನೋಟಿಫಿಕೇಶನ್‌ಗಳಿಲ್ಲ.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MODERN LANGUAGE SELECTOR POPUP CARD -->
+  <div id="languageSelectionModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-gray-700 w-full max-w-xs rounded-3xl p-5 space-y-4 shadow-2xl animate-scale-up">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+        <h3 class="font-black text-white text-sm" id="langModalTitle">ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ</h3>
+        <button onclick="closeLanguageModal()" class="text-gray-400 text-base font-bold">✕</button>
+      </div>
+
+      <div class="space-y-2">
+        <button onclick="selectAppLanguage('kn')" class="w-full text-left p-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs flex justify-between items-center transition border border-gray-700">
+          <span>ಕನ್ನಡ</span>
+          <span id="checkKn" class="text-green-400 font-black text-sm">✓</span>
+        </button>
+        <button onclick="selectAppLanguage('en')" class="w-full text-left p-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs flex justify-between items-center transition border border-gray-700">
+          <span>English</span>
+          <span id="checkEn" class="text-green-400 font-black text-sm hidden">✓</span>
+        </button>
+        <button onclick="selectAppLanguage('hi')" class="w-full text-left p-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs flex justify-between items-center transition border border-gray-700">
+          <span>हिंदी</span>
+          <span id="checkHi" class="text-green-400 font-black text-sm hidden">✓</span>
+        </button>
+      </div>
+
+      <button onclick="closeLanguageModal()" class="w-full bg-green-500 hover:bg-green-600 text-black font-black py-2.5 rounded-xl transition shadow text-xs" id="langModalBtnOk">
+        ಮುಂದುವರಿಸಿ
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: CUSTOM ALERT / INFO CARD -->
+  <div id="customInfoModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-gray-700 w-full max-w-xs rounded-3xl p-5 space-y-4 shadow-2xl text-center">
+      <h3 id="customModalTitle" class="font-bold text-white text-sm">ಶೀರ್ಷಿಕೆ</h3>
+      <p id="customModalDesc" class="text-xs text-gray-300 leading-relaxed">ವಿವರಣೆ ಇಲ್ಲಿ...</p>
+      <button onclick="closeCustomModal()" class="w-full bg-green-500 hover:bg-green-600 text-black font-black py-2.5 rounded-xl transition shadow text-xs" id="customModalBtnOk">
+        ಸರಿ
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: ORDER CANCELLATION REASON -->
+  <div id="cancelReasonModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-white text-sm" id="cancelModalTitle">❌ ಆರ್ಡರ್ ಯಾಕೆ ಕ್ಯಾನ್ಸಲ್ ಮಾಡುತ್ತಿದ್ದೀರಿ?</h3>
+        <button onclick="closeCancelReasonModal()" class="text-gray-400 text-lg">✕</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <select id="cancelReasonSelect" class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-white outline-none font-bold">
+          <option value="ತಪ್ಪು ವಸ್ತು ಆಯ್ಕೆಯಾಗಿದೆ">ತಪ್ಪು ವಸ್ತು ಆಯ್ಕೆಯಾಗಿದೆ</option>
+          <option value="ವಿಳಾಸ ಬದಲಾಯಿಸಬೇಕು">ವಿಳಾಸ ಬದಲಾಯಿಸಬೇಕು</option>
+          <option value="ಅಂಗಡಿಯವರಿಂದ ತಡವಾಗುತ್ತಿದೆ">ಅಂಗಡಿಯವರಿಂದ ತಡವಾಗುತ್ತಿದೆ</option>
+          <option value="ಇತರೆ ಕಾರಣಗಳು">ಇತರೆ ಕಾರಣಗಳು</option>
+        </select>
+        <button onclick="confirmCancelActiveOrder()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition shadow" id="cancelModalBtnConfirm">
+          ಕ್ಯಾನ್ಸಲ್ ಕನ್ಫರ್ಮ್ ಮಾಡಿ
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: RATING -->
   <div id="storeRatingModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-gray-900 border border-gray-800 w-full max-w-sm rounded-3xl p-6 space-y-4">
       <div class="flex justify-between items-center">
-        <h3 class="font-bold text-white text-base">⭐ ಅಂಗಡಿಗೆ ರೇಟಿಂಗ್ ನೀಡಿ</h3>
+        <h3 class="font-bold text-white text-base" id="ratingModalTitle">⭐ ಅಂಗಡಿಗೆ ರೇಟಿಂಗ್ ನೀಡಿ</h3>
         <button onclick="closeRatingModal()" class="text-gray-400 text-lg">✕</button>
       </div>
       <div class="space-y-3 text-center" id="ratingModalBodyContent">
@@ -217,11 +378,11 @@
     </div>
   </div>
 
-  <!-- MODAL: UDHARI SMART BILL -->
+  <!-- MODAL: UDHARI SMART BILL WITH DYNAMIC DIGITAL QR & PROPER SCROLLING -->
   <div id="storeCustomerKhataModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center">
-        <h3 class="font-bold text-white text-base">📖 ಉದ್ರಿ ಸ್ಮಾರ್ಟ್ ಬಿಲ್ & ಸ್ಟೇಟ್‌ಮೆಂಟ್</h3>
+        <h3 class="font-bold text-white text-base">📖 ಉದ್ರಿ ಸ್ಮಾರ್ಟ್ ಬಿಲ್ & ಡಿಜಿಟಲ್ QR</h3>
         <button onclick="closeStoreCustomerKhataModal()" class="text-gray-400 text-lg">✕</button>
       </div>
 
@@ -238,12 +399,17 @@
             <p class="text-[10px] font-bold text-gray-800 mt-1">-- ಉದ್ರಿ ಖಾತಾ ಸ್ಟೇಟ್‌ಮೆಂಟ್ --</p>
           </div>
           
-          <div class="space-y-1 text-gray-700">
-            <p><b>ಗ್ರಾಹಕರು:</b> <span id="billCustName">---</span></p>
-            <p><b>ಫೋನ್:</b> <span id="billCustPhone">---</span></p>
+          <div class="space-y-1 text-gray-700 flex justify-between items-center">
+            <div>
+              <p><b>ಗ್ರಾಹಕರು:</b> <span id="billCustName">---</span></p>
+              <p><b>ಫೋನ್:</b> <span id="billCustPhone">---</span></p>
+            </div>
+            <!-- REAL-TIME DYNAMIC DIGITAL QR CODE FOR CUSTOMER ID -->
+            <div id="customerUniqueQrContainer" class="w-20 h-20 bg-gray-100 p-1 rounded-xl border border-gray-300 flex items-center justify-center"></div>
           </div>
 
-          <div class="border-t border-b border-gray-300 py-2 space-y-2 max-h-40 overflow-y-auto" id="billEntriesContainer"></div>
+          <!-- NATURAL SCROLLABLE ENTRIES CONTAINER -->
+          <div class="border-t border-b border-gray-300 py-2 space-y-2 max-h-48 overflow-y-auto flex flex-col-reverse" id="billEntriesContainer"></div>
 
           <div class="flex justify-between items-center font-black text-sm pt-1 text-red-600">
             <span>ಒಟ್ಟು ಬಾಕಿ ಮೊತ್ತ (Total Due):</span>
@@ -255,24 +421,38 @@
           <p class="text-[11px] text-cyan-400 font-bold">ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಬಾಕಿ ಹಣ ಪಾವತಿಸಿ (Pay Online):</p>
           <div id="khataQrAvailable" class="hidden space-y-2">
             <img id="khataPaymentQrImg" src="" class="w-36 h-36 mx-auto bg-white p-1 rounded-2xl shadow object-contain">
-            <p class="text-[10px] text-gray-400">ಕ್ಯೂಆರ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಪಾವತಿಸಿ ಕೆಳಗಿನ ಬಟನ್ ಒತ್ತಿ</p>
-            <button onclick="settleKhataOnline()" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-2.5 rounded-xl text-xs transition shadow">
-              ✔ ಪಾವತಿ ಪೂರ್ಣಗೊಂಡಿದೆ (Pay & Clear)
-            </button>
-          </div>
-          <div id="khataQrNotAvailable" class="hidden p-2 bg-gray-900 rounded-xl border border-amber-500/30">
-            <p class="text-xs text-amber-400">ಅಂಗಡಿಯವರು QR ಅಪ್ಲೋಡ್ ಮಾಡಿಲ್ಲ. ನೇರವಾಗಿ ಅಂಗಡಿಗೆ ಹಣ ನೀಡಿ.</p>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: CUSTOMER PROFILE -->
+  <!-- MODAL: DEDICATED ORDERS HISTORY -->
+  <div id="customerOrdersModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-white text-base" id="ordersModalTitle">📦 ನನ್ನ ಆರ್ಡರ್ ಹಿಸ್ಟರಿ</h3>
+        <button onclick="closeCustomerOrdersModal()" class="text-gray-400 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3">
+        <div class="bg-gray-800 p-3 rounded-xl text-xs flex justify-between items-center border border-gray-700">
+          <span class="text-gray-400"><span id="ordersModalPhoneLbl">ಲಾಗಿನ್ ನಂಬರ್:</span> <strong id="ordersModalPhoneDisplay" class="text-cyan-400 font-mono">---</strong></span>
+          <span class="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">Verified</span>
+        </div>
+
+        <div class="space-y-2 max-h-80 overflow-y-auto" id="modalOrdersHistoryList">
+          <p id="ordersModalEmptyTxt" class="text-xs text-gray-500 text-center py-6">ಯಾವುದೇ ಆರ್ಡರ್‌ಗಳು ಇಲ್ಲ.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CUSTOMER PROFILE & REAL-TIME SMART MINI GRAPH EXPENSE TRACKER -->
   <div id="customerProfileModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center">
-        <h3 class="font-bold text-white text-base">👤 ಪ್ರೊಫೈಲ್ & ಸ್ಮಾರ್ಟ್ ಟ್ರ್ಯಾಕರ್</h3>
+        <h3 class="font-bold text-white text-base" id="profileModalTitle">👤 ಪ್ರೊಫೈಲ್ & ಸ್ಮಾರ್ಟ್ ಟ್ರ್ಯಾಕರ್</h3>
         <button onclick="closeCustomerProfileModal()" class="text-gray-400 text-lg">✕</button>
       </div>
 
@@ -288,26 +468,29 @@
           </div>
         </div>
 
-        <div class="space-y-2">
-          <label class="block text-xs font-semibold text-gray-400">ಖರ್ಚು ಟ್ರ್ಯಾಕಿಂಗ್ ಅವಧಿ (Expense Tracking):</label>
-          <div class="flex gap-2">
-            <select id="expenseTimeRange" onchange="renderCustomerExpensesTracker()" class="flex-1 bg-gray-800 border border-gray-700 p-2.5 rounded-xl text-xs text-green-400 font-bold outline-none">
-              <option value="monthly">ಈ ತಿಂಗಳ ಒಟ್ಟು ಖರ್ಚು (This Month)</option>
-              <option value="yearly">ಈ ವರ್ಷದ ಒಟ್ಟು ಖರ್ಚು (This Year)</option>
-              <option value="all">ಎಲ್ಲಾ ಕಾಲದ ಒಟ್ಟು ಖರ್ಚು (All Time)</option>
+        <div class="bg-gradient-to-br from-gray-800 to-gray-900 p-4 rounded-2xl border border-green-500/40 space-y-3 shadow-xl">
+          <div class="flex justify-between items-center flex-wrap gap-2">
+            <span class="text-xs font-bold text-green-400" id="profileTrackerHeading">📊 ಸ್ಮಾರ್ಟ್ ಖರ್ಚು ವಿಶ್ಲೇಷಣೆ</span>
+            <!-- UPWARD DROPDOWN -->
+            <select id="expenseTimeRange" onchange="renderCustomerExpensesTracker()" class="bg-gray-900 border border-gray-700 px-2.5 py-1 rounded-xl text-[11px] text-green-400 font-bold outline-none">
+              <option value="monthly" id="optMonthly">ಈ ತಿಂಗಳು</option>
+              <option value="yearly" id="optYearly">ಈ ವರ್ಷ</option>
+              <option value="all" id="optAll">ಸಂಪೂರ್ಣ</option>
             </select>
           </div>
-        </div>
-
-        <div class="bg-gradient-to-r from-gray-800 to-gray-800/60 p-4 rounded-2xl border border-green-500/30 text-center space-y-1 shadow">
-          <p class="text-xs text-gray-400">ಖರ್ಚು ಮಾಡಿರುವ ಒಟ್ಟು ಮೊತ್ತ:</p>
-          <h2 id="trackerTotalSpent" class="text-3xl font-black text-green-400">₹0</h2>
-        </div>
-
-        <div class="space-y-2">
-          <p class="text-xs font-bold text-gray-300">ಆರ್ಡರ್ ಹಿಸ್ಟರಿ & ಸ್ಟೇಟ್‌ಮೆಂಟ್:</p>
-          <div class="space-y-2 max-h-44 overflow-y-auto" id="trackerOrdersList">
-            <p class="text-xs text-gray-500 text-center py-4">ದಯವಿಟ್ಟು ಮೊದಲು ಆರ್ಡರ್ ಮಾಡಿ ಲಾಗಿನ್ ಆಗಿ.</p>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <div class="bg-gray-900/80 p-3 rounded-xl border border-gray-800 text-center">
+              <p class="text-[10px] text-gray-400 uppercase font-semibold" id="profileSpentLbl">ಒಟ್ಟು ಖರ್ಚು</p>
+              <h2 id="trackerTotalSpent" class="text-xl font-black text-green-400 mt-0.5">₹0</h2>
+            </div>
+            <div class="bg-gray-900/80 p-3 rounded-xl border border-gray-800 text-center">
+              <p class="text-[10px] text-gray-400 uppercase font-semibold" id="profileOrdersCountLbl">ಒಟ್ಟು ಆರ್ಡರ್‌ಗಳು</p>
+              <h2 id="trackerTotalOrdersCount" class="text-xl font-black text-cyan-400 mt-0.5">0</h2>
+            </div>
+          </div>
+          <!-- MINI GRAPH INSIDE PROFILE TRACKER BOX -->
+          <div class="w-full h-32 bg-gray-950 p-2 rounded-xl border border-gray-800 relative mt-2">
+            <canvas id="customerExpenseChart"></canvas>
           </div>
         </div>
       </div>
@@ -356,7 +539,7 @@
           <select id="custOrderPayType" onchange="toggleUpiQrSection()" class="w-full bg-gray-800 border border-gray-700 p-2.5 rounded-xl text-sm text-green-400 font-bold outline-none">
             <option value="cod">Cash on Delivery (COD)</option>
             <option value="upi">PhonePe / GPay QR Scan (Paid)</option>
-            <option value="udri">ಖಾತೆ / ಉದ್ರಿ (Add to Khata)</option>
+            <option value="udhari">ಖಾತೆ / ಉದ್ರಿ (Add to Khata)</option>
           </select>
         </div>
 
@@ -364,10 +547,6 @@
           <p class="text-[11px] text-cyan-400 font-bold" id="txtScanTitle">ಅಂಗಡಿಯವರ GPay / PhonePe QR ಕೋಡ್:</p>
           <div id="qrAvailableBox" class="hidden">
             <img id="custPayQrImg" src="" class="w-40 h-40 mx-auto bg-white p-1 rounded-2xl shadow object-contain">
-            <p class="text-[10px] text-gray-400 mt-1" id="txtScanSub">ಸ್ಕ್ಯಾನ್ ಮಾಡಿ ಪಾವತಿಸಿ ಆರ್ಡರ್ ಕನ್ಫರ್ಮ್ ಮಾಡಿ.</p>
-          </div>
-          <div id="qrNotAvailableBox" class="hidden p-3 bg-gray-900 rounded-xl border border-amber-500/30">
-            <p class="text-xs text-amber-400 font-bold" id="txtNoQrWarn">⚠️ ಅಂಗಡಿಯವರು ಸ್ಕ್ಯಾನರ್ ಅಪ್ಲೋಡ್ ಮಾಡಿಲ್ಲ!</p>
           </div>
         </div>
       </div>
@@ -395,12 +574,35 @@
         appOrder: "ಆರ್ಡರ್ ಮಾಡಿ ➔",
         visitBtn: "ಭೇಟಿ ನೀಡಿ ➔",
         addBtn: "+ ಸೇರಿಸಿ",
+        stockOut: "❌ ಸ್ಟಾಕ್ ಖಾಲಿಯಾಗಿದೆ",
         confirmBtn: "✔ ಆರ್ಡರ್ ಕನ್ಫರ್ಮ್ ಮಾಡಿ",
         verified: "✔ Verified Partner",
-        profileMenu: "ಪ್ರೊಫೈಲ್ & ಸ್ಮಾರ್ಟ್ ಟ್ರ್ಯಾಕರ್",
-        langTitle: "ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ / Language:",
         favBtn: "❤️ ನನ್ನ ಫೇವರೆಟ್ಸ್",
-        callBtn: "📞 ಕರೆ"
+        callBtn: "📞 ಕರೆ",
+        menuLang: "🌐 ಭಾಷೆ",
+        menuTheme: "ಥೀಮ್",
+        menuAbout: "ℹ️ ಆಪ್ ಬಗ್ಗೆ",
+        menuPrivacy: "🔒 ಗೌಪ್ಯತಾ ನೀತಿ",
+        navHome: "ಹೋಮ್",
+        navOrders: "ಆರ್ಡರ್ಸ್",
+        navProfile: "ಪ್ರೊಫೈಲ್",
+        langModalTitle: "ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ",
+        langOk: "ಮುಂದುವರಿಸಿ",
+        ordersModalTitle: "📦 ನನ್ನ ಆರ್ಡರ್ ಹಿಸ್ಟರಿ",
+        ordersPhoneLbl: "ಲಾಗಿನ್ ನಂಬರ್:",
+        ordersEmpty: "ಯಾವುದೇ ಆರ್ಡರ್‌ಗಳು ಇಲ್ಲ.",
+        profileModalTitle: "👤 ಪ್ರೊಫೈಲ್ & ಸ್ಮಾರ್ಟ್ ಟ್ರ್ಯಾಕರ್",
+        profileTrackerHeading: "📊 ಸ್ಮಾರ್ಟ್ ಖರ್ಚು ವಿಶ್ಲೇಷಣೆ",
+        profileSpentLbl: "ಒಟ್ಟು ಖರ್ಚು",
+        profileOrdersCountLbl: "ಒಟ್ಟು ಆರ್ಡರ್‌ಗಳು",
+        optMonthly: "ಈ ತಿಂಗಳು",
+        optYearly: "ಈ ವರ್ಷ",
+        optAll: "ಸಂಪೂರ್ಣ",
+        cancelModalTitle: "❌ ಆರ್ಡರ್ ಯಾಕೆ ಕ್ಯಾನ್ಸಲ್ ಮಾಡುತ್ತಿದ್ದೀರಿ?",
+        cancelModalBtnConfirm: "ಕ್ಯಾನ್ಸಲ್ ಕನ್ಫರ್ಮ್ ಮಾಡಿ",
+        ratingModalTitle: "⭐ ಅಂಗಡಿಗೆ ರೇಟಿಂಗ್ ನೀಡಿ",
+        customOk: "ಸರಿ",
+        confirmDismiss: "✔ ಕನ್ಫರ್ಮ್"
       },
       en: {
         banner: "⚡ Free Delivery within 3 KM",
@@ -417,12 +619,35 @@
         appOrder: "Order Now ➔",
         visitBtn: "Visit Store ➔",
         addBtn: "+ Add",
+        stockOut: "❌ Out of Stock",
         confirmBtn: "✔ Confirm Order",
         verified: "✔ Verified Partner",
-        profileMenu: "Profile & Smart Tracker",
-        langTitle: "Select Language:",
-        favBtn: "❤️ My Favorites",
-        callBtn: "📞 Call"
+        favBtn: "❤️ Favorites",
+        callBtn: "📞 Call",
+        menuLang: "🌐 Language",
+        menuTheme: "Theme",
+        menuAbout: "ℹ️ About App",
+        menuPrivacy: "🔒 Privacy Policy",
+        navHome: "Home",
+        navOrders: "Orders",
+        navProfile: "Profile",
+        langModalTitle: "Select Language",
+        langOk: "Continue",
+        ordersModalTitle: "📦 My Orders History",
+        ordersPhoneLbl: "Login Number:",
+        ordersEmpty: "No orders found.",
+        profileModalTitle: "👤 Profile & Smart Tracker",
+        profileTrackerHeading: "📊 Expense Analytics",
+        profileSpentLbl: "Total Spent",
+        profileOrdersCountLbl: "Total Orders",
+        optMonthly: "This Month",
+        optYearly: "This Year",
+        optAll: "All Time",
+        cancelModalTitle: "❌ Why are you cancelling?",
+        cancelModalBtnConfirm: "Confirm Cancellation",
+        ratingModalTitle: "⭐ Rate Store",
+        customOk: "OK",
+        confirmDismiss: "✔ Confirm"
       },
       hi: {
         banner: "⚡ 3 किमी के भीतर मुफ्त डिलीवरी",
@@ -439,18 +664,99 @@
         appOrder: "ऑर्डर करें ➔",
         visitBtn: "दुकान देखें ➔",
         addBtn: "+ जोड़ें",
+        stockOut: "❌ स्टॉक समाप्त",
         confirmBtn: "✔ ऑर्डर कन्फर्म करें",
         verified: "✔ Verified Partner",
-        profileMenu: "प्रोफाइल & स्मार्ट ट्रैकर",
-        langTitle: "भाषा चुनें:",
-        favBtn: "❤️ मेरे फेवरेट्स",
-        callBtn: "📞 कॉल"
+        favBtn: "❤️ फेवरेट्स",
+        callBtn: "📞 कॉल",
+        menuLang: "🌐 भाषा",
+        menuTheme: "थीम",
+        menuAbout: "ℹ️ ऐप के बारे में",
+        menuPrivacy: "🔒 गोपनीयता नीति",
+        navHome: "होम",
+        navOrders: "ऑर्डर्स",
+        navProfile: "प्रोफाइल",
+        langModalTitle: "भाषा चुनें",
+        langOk: "जारी रखें",
+        ordersModalTitle: "📦 मेरा ऑर्डर इतिहास",
+        ordersPhoneLbl: "लॉगिन नंबर:",
+        ordersEmpty: "कोई ऑर्डर नहीं मिला।",
+        profileModalTitle: "👤 प्रोफाइल और स्मार्ट ट्रैकर",
+        profileTrackerHeading: "📊 खर्च का विश्लेषण",
+        profileSpentLbl: "कुल खर्च",
+        profileOrdersCountLbl: "कुल ऑर्डर्स",
+        optMonthly: "इस महीने",
+        optYearly: "इस साल",
+        optAll: "सभी",
+        cancelModalTitle: "❌ आप ऑर्डर क्यों रद्द कर रहे हैं?",
+        cancelModalBtnConfirm: "रद्द करना कन्फर्म करें",
+        ratingModalTitle: "⭐ स्टोर को रेट करें",
+        customOk: "ठीक है",
+        confirmDismiss: "✔ कन्फर्म"
       }
     };
 
     let currentLang = 'kn';
     let showOnlyFavorites = false;
     let selectedRatingStars = 5;
+    let customerExpenseChartInstance = null;
+    let html5QrCodeScanner = null;
+
+    function changeAppTheme(theme) {
+      localStorage.setItem('tasko_app_theme', theme);
+      const banner = document.getElementById('mainBannerHeader');
+      const logoBadge = document.getElementById('topLogoBadge');
+      
+      if(theme === 'orange') {
+        banner.className = "bg-gradient-to-r from-amber-600 to-orange-700 p-5 text-center space-y-2 rounded-b-3xl shadow-lg transition-all duration-300";
+        logoBadge.className = "w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-orange-600 flex items-center justify-center font-black text-black text-sm shadow";
+      } else if(theme === 'purple') {
+        banner.className = "bg-gradient-to-r from-purple-600 to-indigo-800 p-5 text-center space-y-2 rounded-b-3xl shadow-lg transition-all duration-300";
+        logoBadge.className = "w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-400 to-indigo-600 flex items-center justify-center font-black text-black text-sm shadow";
+      } else {
+        banner.className = "bg-gradient-to-r from-green-600 to-emerald-800 p-5 text-center space-y-2 rounded-b-3xl shadow-lg transition-all duration-300";
+        logoBadge.className = "w-8 h-8 rounded-xl bg-gradient-to-tr from-green-500 to-emerald-700 flex items-center justify-center font-black text-black text-sm shadow";
+      }
+    }
+
+    function bottomNavAction(action) {
+      ['home', 'orders', 'profile'].forEach(a => {
+        const btn = document.getElementById('navBtn' + a.charAt(0).toUpperCase() + a.slice(1));
+        if(btn) btn.className = "flex flex-col items-center gap-1 text-gray-400 hover:text-green-400 transition";
+      });
+
+      const activeBtn = document.getElementById('navBtn' + action.charAt(0).toUpperCase() + action.slice(1));
+      if(activeBtn) activeBtn.className = "flex flex-col items-center gap-1 text-green-400 transition font-bold";
+
+      if(action === 'home') {
+        backToMarketplace();
+      } else if(action === 'orders') {
+        openCustomerOrdersModal();
+      } else if(action === 'profile') {
+        openCustomerProfileModal();
+      }
+    }
+
+    function openLanguageModal() {
+      document.getElementById('languageSelectionModal').classList.remove('hidden');
+    }
+    function closeLanguageModal() {
+      document.getElementById('languageSelectionModal').classList.add('hidden');
+    }
+
+    function selectAppLanguage(lang) {
+      changeLanguage(lang);
+      closeLanguageModal();
+    }
+
+    function openCustomModal(title, desc) {
+      document.getElementById('customModalTitle').innerText = title;
+      document.getElementById('customModalDesc').innerText = desc;
+      document.getElementById('customInfoModal').classList.remove('hidden');
+    }
+    function closeCustomModal() {
+      document.getElementById('customInfoModal').classList.add('hidden');
+    }
 
     function changeLanguage(lang) {
       currentLang = lang;
@@ -462,33 +768,77 @@
       document.getElementById('btnSearch').innerText = t.searchBtn;
       document.getElementById('txtStoresHeading').innerText = t.storesHeading;
       document.getElementById('btnBackHome').innerText = t.backHome;
-      document.getElementById('btnKhataCheck').innerText = t.khataCheck;
       document.getElementById('txtFreeDelivery').innerText = t.freeDelivery;
       document.getElementById('txtProductsHeading').innerText = t.productsHeading;
       document.getElementById('btnWaOrder').innerText = t.waOrder;
       document.getElementById('btnAppOrder').innerText = t.appOrder;
       document.getElementById('btnConfirmOrder').innerText = t.confirmBtn;
-      document.getElementById('menuTxtProfile').innerText = t.profileMenu;
-      document.getElementById('menuTxtLangTitle').innerText = t.langTitle;
-      document.getElementById('btnFavFilter').innerText = showOnlyFavorites ? "❤️ (Active) Favorites" : t.favBtn;
+      document.getElementById('btnFavFilter').innerText = showOnlyFavorites ? "❤️ Favorites" : t.favBtn;
       
+      document.getElementById('menuTxtLang').innerText = t.menuLang;
+      document.getElementById('menuTxtThemeLbl').innerText = t.menuTheme + ":";
+      document.getElementById('menuTxtAbout').innerText = t.menuAbout;
+      document.getElementById('menuTxtPrivacy').innerText = t.menuPrivacy;
+
+      document.getElementById('navTxtHome').innerText = t.navHome;
+      document.getElementById('navTxtOrders').innerText = t.navOrders;
+      document.getElementById('navTxtProfile').innerText = t.navProfile;
+
+      document.getElementById('langModalTitle').innerText = t.langModalTitle;
+      document.getElementById('langModalBtnOk').innerText = t.langOk;
+      document.getElementById('ordersModalTitle').innerText = t.ordersModalTitle;
+      document.getElementById('ordersModalPhoneLbl').innerText = t.ordersPhoneLbl;
+      document.getElementById('ordersModalEmptyTxt').innerText = t.ordersEmpty;
+      document.getElementById('profileModalTitle').innerText = t.profileModalTitle;
+      document.getElementById('profileTrackerHeading').innerText = t.profileTrackerHeading;
+      document.getElementById('profileSpentLbl').innerText = t.profileSpentLbl;
+      document.getElementById('profileOrdersCountLbl').innerText = t.profileOrdersCountLbl;
+      document.getElementById('optMonthly').innerText = t.optMonthly;
+      document.getElementById('optYearly').innerText = t.optYearly;
+      document.getElementById('optAll').innerText = t.optAll;
+      document.getElementById('cancelModalTitle').innerText = t.cancelModalTitle;
+      document.getElementById('cancelModalBtnConfirm').innerText = t.cancelModalBtnConfirm;
+      document.getElementById('ratingModalTitle').innerText = t.ratingModalTitle;
+      document.getElementById('customModalBtnOk').innerText = t.customOk;
+
+      ['kn', 'en', 'hi'].forEach(l => {
+        const check = document.getElementById('check' + l.charAt(0).toUpperCase() + l.slice(1));
+        if(check) {
+          if(l === lang) check.classList.remove('hidden');
+          else check.classList.add('hidden');
+        }
+      });
+
       loadMarketplaceShops(document.getElementById('marketplaceSearchInput').value.trim());
       if(activeShop) loadStoreProducts();
     }
 
-    function toggleThreeDotMenu() {
+    function toggleThreeDotMenu(event) {
+      event.stopPropagation();
       document.getElementById('threeDotDropdown').classList.toggle('hidden');
     }
+    function closeThreeDotMenu() {
+      document.getElementById('threeDotDropdown').classList.add('hidden');
+    }
+
+    window.addEventListener('click', () => {
+      closeThreeDotMenu();
+    });
 
     let activeShop = null;
     let cart = {};
     let checkoutMode = 'app';
 
     window.addEventListener('DOMContentLoaded', async () => { 
+      const savedTheme = localStorage.getItem('tasko_app_theme') || 'green';
+      changeAppTheme(savedTheme);
+
       await syncCloudDataToLocalStorage();
       loadMarketplaceShops(); 
       loadSavedProfile();
       checkActiveOrderTracker();
+      loadCustomerNotifications();
+      setInterval(checkActiveOrderTracker, 4000);
     });
 
     async function syncCloudDataToLocalStorage() {
@@ -527,6 +877,42 @@
       } catch(e) { console.error("Cloud Sync Error:", e); }
     }
 
+    async function loadCustomerNotifications() {
+      if(!window.FB_DB) return;
+      try {
+        const snap = await window.FB_get(window.FB_ref(window.FB_DB, 'adminHelpTickets'));
+        if(snap.exists()) {
+          let tickets = snap.val();
+          const phone = localStorage.getItem('cust_verified_phone');
+          let matched = tickets.filter(t => t && t.shopPhone === phone && t.reply);
+          const listDiv = document.getElementById('customerNotificationsList');
+          const dot = document.getElementById('notifBadgeDot');
+          if(matched.length > 0) {
+            dot.classList.remove('hidden');
+            let html = "";
+            matched.slice().reverse().forEach(m => {
+              html += `
+                <div class="bg-gray-800 p-3 rounded-xl border border-gray-700 text-xs space-y-1">
+                  <p class="text-gray-400">ನಿಮ್ಮ ಪ್ರಶ್ನೆ: <b>${m.message}</b></p>
+                  <p class="text-green-400 font-bold">ಅಡ್ಮಿನ್ ಉತ್ತರ: ${m.reply}</p>
+                  <span class="text-[9px] text-gray-500 font-mono">${m.date}</span>
+                </div>`;
+            });
+            listDiv.innerHTML = html;
+          }
+        }
+      } catch(e) {}
+    }
+
+    function openCustomerNotificationsModal() {
+      loadCustomerNotifications();
+      document.getElementById('notifBadgeDot').classList.add('hidden');
+      document.getElementById('customerNotificationsModal').classList.remove('hidden');
+    }
+    function closeCustomerNotificationsModal() {
+      document.getElementById('customerNotificationsModal').classList.add('hidden');
+    }
+
     function getFavoritesList() {
       return JSON.parse(localStorage.getItem('cust_favorites_list') || '[]');
     }
@@ -549,12 +935,71 @@
       const btn = document.getElementById('btnFavFilter');
       if(showOnlyFavorites) {
         btn.className = "bg-pink-600 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl transition shadow flex items-center gap-1.5 border border-pink-400";
-        btn.innerText = "❤️ ತೋರಿಸಲಾಗುತ್ತಿದೆ (Favorites)";
+        btn.innerText = "❤️ Favorites";
       } else {
         btn.className = "bg-gray-800 hover:bg-gray-700 text-pink-400 border border-pink-500/30 font-bold text-[11px] px-3 py-1.5 rounded-xl transition shadow flex items-center gap-1.5";
         btn.innerText = t.favBtn;
       }
       loadMarketplaceShops();
+    }
+
+    // LIVE CAMERA QR SCANNER & MANUAL CODE MODAL
+    function openQrScannerModal() {
+      document.getElementById('manualQrInput').value = '';
+      document.getElementById('qrScannerModal').classList.remove('hidden');
+      
+      setTimeout(() => {
+        try {
+          if(!html5QrCodeScanner) {
+            html5QrCodeScanner = new Html5Qrcode("reader");
+          }
+          html5QrCodeScanner.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 200, height: 200 } },
+            (decodedText) => {
+              handleScannedCode(decodedText);
+            },
+            (errorMessage) => {}
+          ).catch(err => {});
+        } catch(e) {}
+      }, 300);
+    }
+
+    function closeQrScannerModal() {
+      if(html5QrCodeScanner) {
+        html5QrCodeScanner.stop().then(() => {
+          html5QrCodeScanner.clear();
+        }).catch(err => {});
+      }
+      document.getElementById('qrScannerModal').classList.add('hidden');
+    }
+
+    function handleScannedCode(codeText) {
+      closeQrScannerModal();
+      let cleanCode = codeText.trim();
+      if(cleanCode.includes('?id=')) {
+        cleanCode = cleanCode.split('?id=')[1].split('&')[0];
+      }
+      const allShops = JSON.parse(localStorage.getItem('allPlatformShops') || '[]');
+      const found = allShops.find(s => s.shopCode === cleanCode || s.id === cleanCode);
+      if(found) {
+        visitStore(found.id);
+      } else {
+        document.getElementById('customAlertTitle').innerText = "ದೋಷ";
+        document.getElementById('customAlertMessage').innerText = `❌ ಸ್ಕ್ಯಾನ್ ಮಾಡಿದ ಕೋಡ್ (${cleanCode}) ಗೆ ಯಾವುದೇ ಅಂಗಡಿ ಪತ್ತೆಯಾಗಿಲ್ಲ.`;
+        document.getElementById('customAppAlertModal').classList.remove('hidden');
+      }
+    }
+
+    function submitManualQrScan() {
+      const code = document.getElementById('manualQrInput').value.trim();
+      if(!code) {
+        document.getElementById('customAlertTitle').innerText = "ಎಚ್ಚರಿಕೆ";
+        document.getElementById('customAlertMessage').innerText = "ದಯವಿಟ್ಟು ಶಾಪ್ ಕೋಡ್ ನಮೂದಿಸಿ.";
+        document.getElementById('customAppAlertModal').classList.remove('hidden');
+        return;
+      }
+      handleScannedCode(code);
     }
 
     function loadMarketplaceShops(filterQuery = "") {
@@ -592,6 +1037,8 @@
           const sum = ratingsList.reduce((acc, r) => acc + r.stars, 0);
           avgRating = (sum / ratingsList.length).toFixed(1);
         }
+
+        const isClosed = shop.isStoreOpen === false;
         
         grid.innerHTML += `
           <div class="bg-gray-800/85 border border-gray-700/80 p-4 rounded-2xl flex items-center justify-between gap-3 shadow-md hover:border-green-500/50 transition relative">
@@ -609,6 +1056,7 @@
               <div class="flex items-center gap-2 mt-1">
                 <span class="inline-block text-[10px] text-green-400 font-bold bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">${t.verified}</span>
                 <span class="text-[10px] text-yellow-400 font-bold">⭐ ${avgRating} (${ratingsList.length})</span>
+                ${isClosed ? '<span class="text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold">Closed</span>' : ''}
               </div>
             </div>
             <button onclick="visitStore('${shop.id}')" class="bg-green-500 hover:bg-green-600 text-black font-bold text-xs px-3.5 py-2.5 rounded-xl transition shadow whitespace-nowrap">
@@ -625,7 +1073,11 @@
       const allShops = JSON.parse(localStorage.getItem('allPlatformShops') || '[]');
       const found = allShops.find(s => s.shopCode === q || (s.name && s.name.toLowerCase().includes(q.toLowerCase())));
       if (found) visitStore(found.id);
-      else alert("ಯಾವುದೇ ಅಂಗಡಿ ಪತ್ತೆಯಾಗಿಲ್ಲ.");
+      else {
+        document.getElementById('customAlertTitle').innerText = "ದೋಷ";
+        document.getElementById('customAlertMessage').innerText = "ಯಾವುದೇ ಅಂಗಡಿ ಪತ್ತೆಯಾಗಿಲ್ಲ.";
+        document.getElementById('customAppAlertModal').classList.remove('hidden');
+      }
     }
 
     async function visitStore(shopId) {
@@ -636,11 +1088,40 @@
 
       document.getElementById('custStoreName').innerText = activeShop.name;
       document.getElementById('custStoreAddr').innerText = "📍 " + activeShop.addr;
+      
+      const mapBtn = document.getElementById('custStoreMapLink');
+      if(activeShop.mapUrl) {
+        mapBtn.href = activeShop.mapUrl;
+        mapBtn.classList.remove('hidden');
+      } else {
+        mapBtn.classList.add('hidden');
+      }
+
+      if(activeShop.deliveryBanner) {
+        document.getElementById('txtFreeDelivery').innerText = `🚚 ${activeShop.deliveryBanner}`;
+      }
+
+      if(activeShop.bannerImg) {
+        document.getElementById('custStoreBanner').src = activeShop.bannerImg;
+      }
+
       const savedLogo = localStorage.getItem(`shop_logo_${activeShop.id}`) || activeShop.logo;
       if (savedLogo) document.getElementById('custStoreLogo').src = savedLogo;
 
       const storePhone = activeShop.phone || "919999999999";
       document.getElementById('storeCallBtn').href = `tel:${storePhone}`;
+
+      // Check Store Open / Closed / Holiday Sync
+      const closedNotice = document.getElementById('storeClosedNoticeBanner');
+      if(activeShop.isStoreOpen === false) {
+        closedNotice.classList.remove('hidden');
+        document.getElementById('storeClosedNoticeText').innerText = "ಅಂಗಡಿ ಸದ್ಯಕ್ಕೆ ಬಂದ್ ಇದೆ (Store Closed)";
+      } else if(activeShop.holidayDate && activeShop.holidayDate === new Date().toISOString().split('T')[0]) {
+        closedNotice.classList.remove('hidden');
+        document.getElementById('storeClosedNoticeText').innerText = activeShop.holidayMsg || "ಇವತ್ತು ಅಂಗಡಿಗೆ ರಜೆ ಇದೆ (Store Holiday)";
+      } else {
+        closedNotice.classList.add('hidden');
+      }
 
       cart = JSON.parse(localStorage.getItem(`persistent_cart_${activeShop.id}`) || '{}');
       updateCartUI(); 
@@ -658,37 +1139,65 @@
       checkActiveOrderTracker();
     }
 
-    function loadStoreProducts() {
+    function loadStoreProducts(filterQuery = "") {
       if (!activeShop) return;
       let prods = JSON.parse(localStorage.getItem(`prods_${activeShop.id}`) || '[]');
+      
+      if(filterQuery) {
+        const q = filterQuery.toLowerCase();
+        prods = prods.filter(p => p.name && p.name.toLowerCase().includes(q));
+      }
+
       const container = document.getElementById('custProductGrid'); container.innerHTML = '';
       if (prods.length === 0) { container.innerHTML = '<p class="text-center text-gray-500 text-xs py-8">ಯಾವುದೇ ವಸ್ತುಗಳು ಇಲ್ಲ.</p>'; return; }
       
       const t = langData[currentLang];
+      const isStoreClosed = activeShop.isStoreOpen === false || (activeShop.holidayDate && activeShop.holidayDate === new Date().toISOString().split('T')[0]);
+
       prods.forEach(prod => {
-        if (!prod.inStock) return;
+        const inStock = prod.inStock !== false && !isStoreClosed;
         const currentQty = cart[prod.name] || 0;
+
         container.innerHTML += `
-          <div class="bg-gray-900 border border-gray-800 p-3 rounded-2xl flex items-center justify-between gap-3 shadow">
+          <div class="bg-gray-900 border ${inStock ? 'border-gray-800' : 'border-red-900/50 opacity-60'} p-3 rounded-2xl flex items-center justify-between gap-3 shadow">
             <img src="${prod.img}" class="w-16 h-16 rounded-xl object-cover bg-gray-800 border border-gray-700">
-            <div class="flex-1"><h4 class="font-bold text-sm text-white">${prod.name}</h4><p class="text-xs text-gray-400">${prod.qty || ''} ${prod.unit || ''}</p><p class="text-green-400 font-black text-sm mt-0.5">₹${prod.price}</p></div>
+            <div class="flex-1">
+              <h4 class="font-bold text-sm text-white">${prod.name}</h4>
+              <p class="text-xs text-gray-400">${prod.qty || ''} ${prod.unit || ''}</p>
+              <p class="text-green-400 font-black text-sm mt-0.5">₹${prod.price}</p>
+            </div>
             <div>
-              ${currentQty === 0 ? `<button onclick="changeQty('${prod.name}', 1)" class="bg-gray-800 hover:bg-green-500 hover:text-black text-green-400 text-xs font-bold px-3.5 py-2 rounded-xl border border-gray-700 transition">${t.addBtn}</button>` : `
-                <div class="flex items-center gap-2 bg-gray-800 border border-green-500/30 rounded-xl p-1">
-                  <button onclick="changeQty('${prod.name}', -1)" class="w-6 h-6 bg-gray-700 text-white rounded-lg font-bold">-</button>
-                  <span class="text-xs font-bold text-green-400 px-1">${currentQty}</span>
-                  <button onclick="changeQty('${prod.name}', 1)" class="w-6 h-6 bg-green-500 text-black rounded-lg font-bold">+</button>
-                </div>`}
+              ${inStock ? (
+                currentQty === 0 ? `<button onclick="changeQty('${prod.name}', 1)" class="bg-gray-800 hover:bg-green-500 hover:text-black text-green-400 text-xs font-bold px-3.5 py-2 rounded-xl border border-gray-700 transition">${t.addBtn}</button>` : `
+                  <div class="flex items-center gap-2 bg-gray-800 border border-green-500/30 rounded-xl p-1">
+                    <button onclick="changeQty('${prod.name}', -1)" class="w-6 h-6 bg-gray-700 text-white rounded-lg font-bold">-</button>
+                    <span class="text-xs font-bold text-green-400 px-1">${currentQty}</span>
+                    <button onclick="changeQty('${prod.name}', 1)" class="w-6 h-6 bg-green-500 text-black rounded-lg font-bold">+</button>
+                  </div>`
+              ) : `
+                <span class="bg-red-500/20 text-red-400 font-bold px-2.5 py-1.5 rounded-xl text-[10px] border border-red-500/30 whitespace-nowrap block text-center">${isStoreClosed ? 'Store Closed' : t.stockOut}</span>
+              `}
             </div>
           </div>`;
       });
     }
 
+    function filterInStoreProducts() {
+      const q = document.getElementById('inStoreProductSearchInput').value.trim();
+      loadStoreProducts(q);
+    }
+
     function changeQty(prodName, delta) {
+      if(activeShop && (activeShop.isStoreOpen === false || (activeShop.holidayDate && activeShop.holidayDate === new Date().toISOString().split('T')[0]))) {
+        document.getElementById('customAlertTitle').innerText = "ಎಚ್ಚರಿಕೆ";
+        document.getElementById('customAlertMessage').innerText = "⚠️ ಅಂಗಡಿ ಸದ್ಯಕ್ಕೆ ಬಂದ್ ಇರುವುದರಿಂದ ಆರ್ಡರ್ ಮಾಡಲು ಬರುವುದಿಲ್ಲ.";
+        document.getElementById('customAppAlertModal').classList.remove('hidden');
+        return;
+      }
       const cur = cart[prodName] || 0, next = cur + delta;
       if (next <= 0) delete cart[prodName]; else cart[prodName] = next;
       if(activeShop) localStorage.setItem(`persistent_cart_${activeShop.id}`, JSON.stringify(cart));
-      loadStoreProducts(); 
+      loadStoreProducts(document.getElementById('inStoreProductSearchInput').value.trim()); 
       updateCartUI();
     }
 
@@ -710,14 +1219,15 @@
       }
     }
 
-    function checkActiveOrderTracker() {
+    async function checkActiveOrderTracker() {
+      await syncCloudDataToLocalStorage();
       const orders = JSON.parse(localStorage.getItem('shopOrders') || '[]');
       const phone = localStorage.getItem('cust_verified_phone');
       
       const homeBanner = document.getElementById('homeLiveOrderBanner');
       const storeTrackerBar = document.getElementById('liveOrderTrackerBar');
       
-      const latest = orders.slice().reverse().find(o => o.customerPhone === phone && o.status !== 'Cancelled');
+      const latest = orders.slice().reverse().find(o => o.customerPhone === phone && o.status !== 'Cancelled' && o.status !== 'Delivered');
       
       if(latest) {
         const allShops = JSON.parse(localStorage.getItem('allPlatformShops') || '[]');
@@ -725,71 +1235,90 @@
         const shopName = shopObj ? shopObj.name : "ಅಂಗಡಿ";
 
         homeBanner.classList.remove('hidden');
+        document.getElementById('homeOrderUniqueIdText').innerText = `📦 ಲೈವ್ ಆರ್ಡರ್ (#${latest.id.replace('ORD_', '')})`;
         document.getElementById('homeOrderShopNameText').innerText = `ಶಾಪ್: ${shopName} (₹${latest.total})`;
-        document.getElementById('homeOrderStatusBadge').innerText = latest.status === 'Paid' ? "ಪಾವತಿ ಪೂರ್ಣಗೊಂಡಿದೆ" : "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ";
+        document.getElementById('homeOrderStatusBadge').innerText = latest.status;
+
+        const cancelBtnContainer1 = document.getElementById('homeCancelBtnContainer');
+        if(latest.status === 'Preparing' || latest.status === 'Out for Delivery') {
+          cancelBtnContainer1.innerHTML = `<span class="text-[10px] text-yellow-300 font-bold bg-black/20 px-2 py-1 rounded">🔒 ತಯಾರಾಗುತ್ತಿದೆ (Lock)</span>`;
+        } else {
+          cancelBtnContainer1.innerHTML = `<button onclick="openCancelReasonModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] shadow transition">❌ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಿ</button>`;
+        }
 
         if(activeShop && activeShop.id === latest.shopId) {
           storeTrackerBar.classList.remove('hidden');
-          document.getElementById('liveOrderStatusText').innerText = latest.status === 'Paid' ? "ಪಾವತಿ ಪೂರ್ಣಗೊಂಡಿದೆ - ಪ್ಯಾಕಿಂಗ್" : "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ";
-          document.getElementById('liveOrderProgressBar').style.width = latest.status === 'Paid' ? "75%" : "35%";
+          document.getElementById('liveOrderStatusText').innerText = latest.status;
+          
+          let pWidth = "35%";
+          if(latest.status === 'Preparing') pWidth = "60%";
+          else if(latest.status === 'Out for Delivery') pWidth = "85%";
+          document.getElementById('liveOrderProgressBar').style.width = pWidth;
+
+          const cancelBtnContainer2 = document.getElementById('storeCancelBtnContainer');
+          if(latest.status === 'Preparing' || latest.status === 'Out for Delivery') {
+            cancelBtnContainer2.innerHTML = `<span class="text-[10px] text-yellow-400 font-bold">🔒 ಆಲ್ರೆಡಿ ತಯಾರಾಗುತ್ತಿದೆ</span>`;
+          } else {
+            cancelBtnContainer2.innerHTML = `<button onclick="openCancelReasonModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1 rounded-lg text-[10px] shadow transition">❌ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಿ</button>`;
+          }
         } else if(storeTrackerBar) {
           storeTrackerBar.classList.add('hidden');
         }
+
       } else {
         homeBanner.classList.add('hidden');
         if(storeTrackerBar) storeTrackerBar.classList.add('hidden');
+
+        const lastDelivered = orders.slice().reverse().find(o => o.customerPhone === phone && o.status === 'Delivered');
+        if(lastDelivered && !localStorage.getItem(`rated_${lastDelivered.id}`)) {
+          localStorage.setItem(`rated_${lastDelivered.id}`, 'true');
+          setTimeout(() => { openRatingModal(); }, 500);
+        }
+      }
+      if(document.getElementById('customerProfileModal').classList.contains('hidden') === false) {
+        renderCustomerExpensesTracker();
       }
     }
 
-    async function cancelActiveOrder() {
-      if(!confirm("ಖಂಡಿತವಾಗಿ ಈ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಲು ಬಯಸುತ್ತೀರಾ?")) return;
+    function openCancelReasonModal() {
+      document.getElementById('cancelReasonModal').classList.remove('hidden');
+    }
+    function closeCancelReasonModal() {
+      document.getElementById('cancelReasonModal').classList.add('hidden');
+    }
+
+    async function confirmCancelActiveOrder() {
+      const reason = document.getElementById('cancelReasonSelect').value;
       const phone = localStorage.getItem('cust_verified_phone');
       let orders = JSON.parse(localStorage.getItem('shopOrders') || '[]');
       
-      const latest = orders.slice().reverse().find(o => o.customerPhone === phone && o.status !== 'Cancelled');
+      const latest = orders.slice().reverse().find(o => o.customerPhone === phone && o.status !== 'Cancelled' && o.status !== 'Delivered');
       if(latest) {
+        if(latest.status === 'Preparing' || latest.status === 'Out for Delivery') {
+          document.getElementById('customAlertTitle').innerText = "ಎಚ್ಚರಿಕೆ";
+          document.getElementById('customAlertMessage').innerText = "⚠️ ಅಂಗಡಿಯಲ್ಲಿ ಆರ್ಡರ್ ಆಲ್ರೆಡಿ ತಯಾರಾಗುತ್ತಿರುವುದರಿಂದ ಈಗ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಲು ಬರುವುದಿಲ್ಲ.";
+          document.getElementById('customAppAlertModal').classList.remove('hidden');
+          closeCancelReasonModal();
+          return;
+        }
         latest.status = 'Cancelled';
+        latest.cancelReason = reason;
         localStorage.setItem('shopOrders', JSON.stringify(orders));
         if(window.FB_DB) {
           await window.FB_set(window.FB_ref(window.FB_DB, 'shopOrders'), orders);
         }
-        alert("❌ ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಲಾಗಿದೆ.");
+        closeCancelReasonModal();
+        document.getElementById('customAlertTitle').innerText = "ರದ್ದು";
+        document.getElementById('customAlertMessage').innerText = `❌ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಲಾಗಿದೆ. ಕಾರಣ: ${reason}`;
+        document.getElementById('customAppAlertModal').classList.remove('hidden');
         checkActiveOrderTracker();
       }
     }
 
     function openRatingModal() {
       const phone = localStorage.getItem('cust_verified_phone');
-      if(!phone) {
-        alert("⚠️ ರೇಟಿಂಗ್ ನೀಡಲು ದಯವಿಟ್ಟು ಮೊದಲು ಆರ್ಡರ್ ಮಾಡಿ ಲಾಗಿನ್ ಆಗಿ.");
-        return;
-      }
-
-      const ratingsList = JSON.parse(localStorage.getItem(`shop_ratings_${activeShop.id}`) || '[]');
-      const alreadyRated = ratingsList.find(r => r.phone === phone);
-
-      const bodyContent = document.getElementById('ratingModalBodyContent');
-      if(alreadyRated) {
-        bodyContent.innerHTML = `
-          <div class="py-6 space-y-2">
-            <p class="text-green-400 font-bold text-sm">✔ ನೀವು ಈಗಾಗಲೇ ಈ ಅಂಗಡಿಗೆ ರೇಟಿಂಗ್ ನೀಡಿದ್ದೀರಿ!</p>
-            <p class="text-yellow-400 text-lg">⭐ ${alreadyRated.stars} / 5 Stars</p>
-            <p class="text-xs text-gray-300 italic">"${alreadyRated.comment || 'ಯಾವುದೇ ಕಮೆಂಟ್ ಇಲ್ಲ'}"</p>
-          </div>`;
-      } else {
-        selectedRatingStars = 5;
-        bodyContent.innerHTML = `
-          <div class="flex justify-center gap-2 text-3xl" id="starContainer">
-            <button onclick="setRating(1)" class="star-btn text-yellow-400 transition" data-val="1">★</button>
-            <button onclick="setRating(2)" class="star-btn text-yellow-400 transition" data-val="2">★</button>
-            <button onclick="setRating(3)" class="star-btn text-yellow-400 transition" data-val="3">★</button>
-            <button onclick="setRating(4)" class="star-btn text-yellow-400 transition" data-val="4">★</button>
-            <button onclick="setRating(5)" class="star-btn text-yellow-400 transition" data-val="5">★</button>
-          </div>
-          <textarea id="reviewCommentInput" placeholder="ನಿಮ್ಮ ಅನಿಸಿಕೆ ತಿಳಿಸಿ..." class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-xs text-white outline-none h-20 resize-none"></textarea>
-          <button onclick="submitStoreRating()" id="submitRatingBtn" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-xl text-xs transition shadow">ರೇಟಿಂಗ್ ಸಬ್ಮಿಟ್ ಮಾಡಿ</button>`;
-        updateStarUI(5);
-      }
+      if(!phone) return;
+      selectedRatingStars = 5;
       document.getElementById('storeRatingModal').classList.remove('hidden');
     }
 
@@ -804,16 +1333,10 @@
 
     async function submitStoreRating() {
       if(!activeShop) return;
-      const phone = localStorage.getItem('cust_verified_phone');
+      const phone = localStorage.getItem('cust_verified_phone') || "9999999999";
       const comment = document.getElementById('reviewCommentInput').value.trim();
 
       let ratingsList = JSON.parse(localStorage.getItem(`shop_ratings_${activeShop.id}`) || '[]');
-      if(ratingsList.some(r => r.phone === phone)) {
-        alert("ನೀವು ಈಗಾಗಲೇ ರೇಟಿಂಗ್ ನೀಡಿದ್ದೀರಿ!");
-        closeRatingModal();
-        return;
-      }
-
       ratingsList.push({ phone: phone, stars: selectedRatingStars, comment: comment, date: new Date().toLocaleDateString() });
       localStorage.setItem(`shop_ratings_${activeShop.id}`, JSON.stringify(ratingsList));
 
@@ -821,7 +1344,9 @@
         await window.FB_set(window.FB_ref(window.FB_DB, `shop_ratings_${activeShop.id}`), ratingsList);
       }
 
-      alert("✔ ನಿಮ್ಮ ರೇಟಿಂಗ್ ಯಶಸ್ವಿಯಾಗಿ ಸಬ್ಮಿಟ್ ಆಯಿತು!");
+      document.getElementById('customAlertTitle').innerText = "ಯಶಸ್ಸು";
+      document.getElementById('customAlertMessage').innerText = "✔ ನಿಮ್ಮ ರೇಟಿಂಗ್ ಯಶಸ್ವಿಯಾಗಿ ಸಬ್ಮಿಟ್ ಆಯಿತು!";
+      document.getElementById('customAppAlertModal').classList.remove('hidden');
       closeRatingModal();
       loadMarketplaceShops();
     }
@@ -833,7 +1358,9 @@
       const phone = localStorage.getItem('cust_verified_phone');
       
       if(!phone) {
-        alert("⚠️ ದಯವಿಟ್ಟು ಮೊದಲು ಆರ್ಡರ್ ಮಾಡುವಾಗ ಅಥವಾ ಪ್ರೊಫೈಲ್‌ನಲ್ಲಿ ಲಾಗಿನ್ ಆಗಿ.");
+        document.getElementById('customAlertTitle').innerText = "ಎಚ್ಚರಿಕೆ";
+        document.getElementById('customAlertMessage').innerText = "⚠️ ದಯವಿಟ್ಟು ಮೊದಲು ಆರ್ಡರ್ ಮಾಡುವಾಗ ಅಥವಾ ಪ್ರೊಫೈಲ್‌ನಲ್ಲಿ ಲಾಗಿನ್ ಆಗಿ.";
+        document.getElementById('customAppAlertModal').classList.remove('hidden');
         return;
       }
 
@@ -841,6 +1368,23 @@
       document.getElementById('khataModalPhoneDisplay').innerText = phone;
       document.getElementById('billShopName').innerText = activeShop.name;
       document.getElementById('billShopAddr').innerText = `ವಿಳಾಸ: ${activeShop.addr} | ಕೋಡ್: ${activeShop.shopCode}`;
+
+      // Unique Customer PIN generation per phone if not exists (Internal use only, hidden from UI)
+      let custPins = JSON.parse(localStorage.getItem('all_customer_unique_pins') || '{}');
+      if(!custPins[phone]) {
+        custPins[phone] = Math.floor(1000 + Math.random() * 9000).toString();
+        localStorage.setItem('all_customer_unique_pins', JSON.stringify(custPins));
+      }
+      const uniquePinVal = custPins[phone];
+
+      // Render Dynamic Unique QR code for Customer ID inside Smart Bill
+      const qrContainer = document.getElementById('customerUniqueQrContainer');
+      qrContainer.innerHTML = "";
+      new QRCode(qrContainer, {
+        text: `CUST_PIN:${phone}:${uniquePinVal}`,
+        width: 70,
+        height: 70
+      });
 
       const allLedgers = JSON.parse(localStorage.getItem(`ledger_${activeShop.id}`) || '{}');
       const cust = allLedgers[phone];
@@ -862,15 +1406,20 @@
       document.getElementById('billTotalDue').innerText = `₹${cust.totalDue}`;
 
       let entriesHtml = "";
-      cust.entries.forEach(en => {
+      cust.entries.forEach((en, enIdx) => {
         const isPay = en.amount < 0;
         entriesHtml += `
-          <div class="border-b border-dashed border-gray-200 pb-1.5 mb-1.5">
-            <p class="text-[9px] text-gray-500">${en.date}</p>
-            <div class="flex justify-between font-bold text-gray-800">
-              <span>${en.items}</span>
-              <span class="${isPay ? 'text-green-600' : 'text-red-600'}">${isPay ? '-₹' + Math.abs(en.amount) : '₹' + en.amount}</span>
+          <div class="border-b border-dashed border-gray-300 pb-1.5 mb-1.5 flex justify-between items-center">
+            <div>
+              <p class="text-[9px] text-gray-500">📅 ${en.date}</p>
+              <div class="font-bold text-gray-800">
+                <span>${en.items}</span>
+                <span class="${isPay ? 'text-green-600' : 'text-red-600'}">${isPay ? '-₹' + Math.abs(en.amount) : '₹' + en.amount}</span>
+              </div>
             </div>
+            <button onclick="dismissCustomerBillEntry('${phone}', ${enIdx})" class="bg-red-500 hover:bg-red-600 text-white font-bold text-[10px] px-2.5 py-1 rounded shadow transition whitespace-nowrap ml-2">
+              ${langData[currentLang].confirmDismiss}
+            </button>
           </div>`;
       });
       entriesContainer.innerHTML = entriesHtml;
@@ -880,44 +1429,89 @@
       if(sellerQr) {
         document.getElementById('khataPaymentQrImg').src = sellerQr;
         document.getElementById('khataQrAvailable').classList.remove('hidden');
-        document.getElementById('khataQrNotAvailable').classList.add('hidden');
-      } else {
-        document.getElementById('khataQrAvailable').classList.add('hidden');
-        document.getElementById('khataQrNotAvailable').classList.remove('hidden');
       }
 
       document.getElementById('storeCustomerKhataModal').classList.remove('hidden');
     }
 
+    async function dismissCustomerBillEntry(phone, entryIndex) {
+      if(!window.FB_DB || !activeShop) return;
+      const db = window.FB_DB;
+      const ledgerRef = window.FB_ref(db, `ledger_${activeShop.id}`);
+      const snapshot = await window.FB_get(ledgerRef);
+      let allLedgers = snapshot.exists() ? snapshot.val() : {};
+      let cust = allLedgers[phone];
+
+      if(cust && cust.entries && cust.entries[entryIndex]) {
+        let removedAmt = cust.entries[entryIndex].amount;
+        if(removedAmt > 0) {
+          cust.totalDue = Math.max(0, cust.totalDue - removedAmt);
+        }
+        cust.entries.splice(entryIndex, 1);
+        if(cust.totalDue === 0) cust.status = 'Settled';
+
+        await window.FB_set(ledgerRef, allLedgers);
+        openStoreCustomerKhataModal();
+        showCustomAppAlert("ಯಶಸ್ಸು", "✔ ಬಿಲ್ ಎಂಟ್ರಿ ಕನ್ಫರ್ಮ್ ಮಾಡಿ ಕ್ಲಿಯರ್ ಮಾಡಲಾಗಿದೆ!");
+      }
+    }
+
     function closeStoreCustomerKhataModal() { document.getElementById('storeCustomerKhataModal').classList.add('hidden'); }
 
-    async function settleKhataOnline() {
-      if(!foundCustomerPhoneForKhata || !activeShop) return;
-      let allLedgers = JSON.parse(localStorage.getItem(`ledger_${activeShop.id}`) || '{}');
-      let cust = allLedgers[foundCustomerPhoneForKhata];
-      if(!cust) return;
-
-      const paidAmount = cust.totalDue;
-      cust.totalDue = 0;
-      cust.status = 'Settled';
-      cust.entries.push({
-        date: new Date().toLocaleString(),
-        items: `ಆನ್‌ಲೈನ್ ಪಾವತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ`,
-        amount: -paidAmount,
-        paid: paidAmount,
-        type: 'Fully Settled'
-      });
-
-      localStorage.setItem(`ledger_${activeShop.id}`, JSON.stringify(allLedgers));
-      if(window.FB_DB) {
-        await window.FB_set(window.FB_ref(window.FB_DB, `ledger_${activeShop.id}`), allLedgers);
+    async function openCustomerOrdersModal() {
+      await syncCloudDataToLocalStorage();
+      const phone = localStorage.getItem('cust_verified_phone');
+      const container = document.getElementById('modalOrdersHistoryList');
+      
+      if(!phone) {
+        document.getElementById('ordersModalPhoneDisplay').innerText = "ಲಾಗಿನ್ ಆಗಿಲ್ಲ";
+        container.innerHTML = '<p class="text-xs text-amber-400 text-center py-6">ದಯವಿಟ್ಟು ಮೊದಲು ಆರ್ಡರ್ ಮಾಡುವಾಗ ಲಾಗಿನ್ ಆಗಿ.</p>';
+        document.getElementById('customerOrdersModal').classList.remove('hidden');
+        return;
       }
-      alert("✔ ಪಾವತಿ ವಿನಂತಿ ಅಂಗಡಿಗೆ ತಲುಪಿದೆ!");
-      closeStoreCustomerKhataModal();
+
+      document.getElementById('ordersModalPhoneDisplay').innerText = phone;
+      const allOrders = JSON.parse(localStorage.getItem('shopOrders') || '[]');
+      const custOrders = allOrders.filter(o => o.customerPhone === phone);
+
+      if(custOrders.length === 0) {
+        container.innerHTML = `<p class="text-xs text-gray-500 text-center py-6">${langData[currentLang].ordersEmpty}</p>`;
+      } else {
+        let html = "";
+        custOrders.slice().reverse().forEach(ord => {
+          const isCancelled = ord.status === 'Cancelled';
+          const isDelivered = ord.status === 'Delivered';
+          const pMode = (ord.paymentType || 'cod').toUpperCase();
+          
+          html += `
+            <div class="bg-gray-800 p-3 rounded-xl border border-gray-700 text-xs space-y-1 shadow">
+              <div class="flex justify-between font-bold text-white">
+                <span>ಆರ್ಡರ್ ಐಡಿ: #${ord.id.replace('ORD_', '')}</span>
+                <span class="text-green-400">₹${ord.total}</span>
+              </div>
+              <p class="text-gray-300">ವಸ್ತುಗಳು: ${ord.itemsSummary}</p>
+              <div class="flex items-center gap-2 pt-0.5">
+                <span class="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded font-bold text-[10px]">💳 ಪಾವತಿ: ${pMode}</span>
+              </div>
+              <div class="flex justify-between text-[10px] text-gray-400 pt-1 border-t border-gray-700">
+                <span>${ord.date}</span>
+                <span class="${isCancelled ? 'text-red-400 font-bold' : (isDelivered ? 'text-green-400 font-bold' : 'text-cyan-400 font-bold')}">${ord.status}</span>
+              </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+      }
+
+      document.getElementById('customerOrdersModal').classList.remove('hidden');
+    }
+
+    function closeCustomerOrdersModal() {
+      document.getElementById('customerOrdersModal').classList.add('hidden');
     }
 
     function openCustomerProfileModal() {
       loadSavedProfile();
+      renderCustomerExpensesTracker();
       document.getElementById('customerProfileModal').classList.remove('hidden');
     }
     function closeCustomerProfileModal() { document.getElementById('customerProfileModal').classList.add('hidden'); }
@@ -937,7 +1531,6 @@
     function saveProfileDetails() {
       const name = document.getElementById('profInputName').value.trim();
       localStorage.setItem('cust_profile_name', name);
-      renderCustomerExpensesTracker();
     }
 
     function loadSavedProfile() {
@@ -949,11 +1542,18 @@
       if(savedName) document.getElementById('profInputName').value = savedName;
       if(verifiedPhone) {
         document.getElementById('profInputPhone').value = verifiedPhone;
+
+        let custPins = JSON.parse(localStorage.getItem('all_customer_unique_pins') || '{}');
+        if(!custPins[verifiedPhone]) {
+          custPins[verifiedPhone] = Math.floor(1000 + Math.random() * 9000).toString();
+          localStorage.setItem('all_customer_unique_pins', JSON.stringify(custPins));
+        }
+
         renderCustomerExpensesTracker();
       } else {
         document.getElementById('profInputPhone').value = "ಲಾಗಿನ್ ಆಗಿಲ್ಲ (Not Logged In)";
         document.getElementById('trackerTotalSpent').innerText = "₹0";
-        document.getElementById('trackerOrdersList').innerHTML = '<p class="text-xs text-amber-400 text-center py-4">ದಯವಿಟ್ಟು ಮೊದಲು ಆರ್ಡರ್ ಮಾಡುವಾಗ OTP ಮೂಲಕ ಲಾಗಿನ್ ಆಗಿ.</p>';
+        document.getElementById('trackerTotalOrdersCount').innerText = "0";
       }
     }
 
@@ -980,29 +1580,72 @@
       }
 
       let totalSpent = 0;
-      let listHtml = "";
-      filteredOrders.slice().reverse().forEach(ord => {
-        totalSpent += Number(ord.total);
-        listHtml += `
-          <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 text-xs space-y-1">
-            <div class="flex justify-between font-bold text-white">
-              <span>ಶಾಪ್ ಕೋಡ್: ${ord.shopCode}</span>
-              <span class="text-green-400">₹${ord.total}</span>
-            </div>
-            <p class="text-gray-300">ವಸ್ತುಗಳು: ${ord.itemsSummary}</p>
-            <div class="flex justify-between text-[10px] text-gray-400 pt-1 border-t border-gray-800">
-              <span>${ord.date}</span>
-              <span class="text-cyan-400 font-bold">${ord.paymentType.toUpperCase()}</span>
-            </div>
-          </div>`;
-      });
+      filteredOrders.forEach(ord => { totalSpent += Number(ord.total); });
 
       document.getElementById('trackerTotalSpent').innerText = `₹${totalSpent}`;
-      document.getElementById('trackerOrdersList').innerHTML = listHtml || '<p class="text-xs text-gray-500 text-center py-4">ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ಖರ್ಚುಗಳಿಲ್ಲ.</p>';
+      document.getElementById('trackerTotalOrdersCount').innerText = filteredOrders.length;
+      
+      renderCustomerExpenseMiniChart(filteredOrders);
+    }
+
+    function renderCustomerExpenseMiniChart(ordersData = []) {
+      const ctx = document.getElementById('customerExpenseChart').getContext('2d');
+      let chartDataMap = {};
+      
+      ordersData.forEach(ord => {
+        if(ord && ord.date) {
+          let dayKey = ord.date.split(',')[0].trim();
+          chartDataMap[dayKey] = (chartDataMap[dayKey] || 0) + Number(ord.total || 0);
+        }
+      });
+
+      let labels = Object.keys(chartDataMap);
+      let values = Object.values(chartDataMap);
+
+      if(labels.length === 0) {
+        labels = ["ಖರ್ಚು ಇಲ್ಲ"];
+        values = [0];
+      }
+
+      if(customerExpenseChartInstance) {
+        customerExpenseChartInstance.destroy();
+      }
+
+      customerExpenseChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'ಖರ್ಚು (₹)',
+            data: values,
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#9ca3af', font: { size: 9 } }, grid: { color: '#1f2937' } },
+            y: { ticks: { color: '#9ca3af', font: { size: 9 } }, grid: { color: '#1f2937' } }
+          }
+        }
+      });
     }
 
     function openCheckout(mode) {
       if (!activeShop) return;
+      if (activeShop.isStoreOpen === false || (activeShop.holidayDate && activeShop.holidayDate === new Date().toISOString().split('T')[0])) {
+        document.getElementById('customAlertTitle').innerText = "ಎಚ್ಚರಿಕೆ";
+        document.getElementById('customAlertMessage').innerText = "⚠️ ಅಂಗಡಿ ಸದ್ಯಕ್ಕೆ ಬಂದ್ ಇದೆ. ಆರ್ಡರ್ ಸ್ವೀಕರಿಸುವುದಿಲ್ಲ.";
+        document.getElementById('customAppAlertModal').classList.remove('hidden');
+        return;
+      }
       checkoutMode = mode;
       document.getElementById('otpBoxContainer').classList.add('hidden');
       document.getElementById('custOrderPhone').value = '';
@@ -1028,9 +1671,16 @@
 
     function sendOtpForCheckout() {
       const phone = document.getElementById('custOrderPhone').value.trim();
-      if(phone.length < 10) { alert("ಸರಿಯಾದ 10 ಅಂಕಿಗಳ ನಂಬರ್ ಹಾಕಿ!"); return; }
+      if(phone.length < 10) {
+        document.getElementById('customAlertTitle').innerText = "ಎಚ್ಚರಿಕೆ";
+        document.getElementById('customAlertMessage').innerText = "ಸರಿಯಾದ 10 ಅಂಕಿಗಳ ನಂಬರ್ ಹಾಕಿ!";
+        document.getElementById('customAppAlertModal').classList.remove('hidden');
+        return;
+      }
       document.getElementById('otpBoxContainer').classList.remove('hidden');
-      alert("🔒 OTP ಕಳುಹಿಸಲಾಗಿದೆ! (OTP: 1234)");
+      document.getElementById('customAlertTitle').innerText = "OTP";
+      document.getElementById('customAlertMessage').innerText = "🔒 OTP ಕಳುಹಿಸಲಾಗಿದೆ! (OTP: 1234)";
+      document.getElementById('customAppAlertModal').classList.remove('hidden');
     }
 
     function toggleUpiQrSection() {
@@ -1042,10 +1692,6 @@
         if(sellerQr) {
           document.getElementById('custPayQrImg').src = sellerQr;
           document.getElementById('qrAvailableBox').classList.remove('hidden');
-          document.getElementById('qrNotAvailableBox').classList.add('hidden');
-        } else {
-          document.getElementById('qrAvailableBox').classList.add('hidden');
-          document.getElementById('qrNotAvailableBox').classList.remove('hidden');
         }
       } else {
         qrSection.classList.add('hidden');
@@ -1057,13 +1703,30 @@
       const phone = document.getElementById('custOrderPhone').value.trim();
       const otp = document.getElementById('custOtpInput').value.trim();
       const addr = document.getElementById('custOrderAddr').value.trim();
-      const payType = checkoutMode === 'whatsapp' ? 'whatsapp' : document.getElementById('custOrderPayType').value;
+      
+      const payType = document.getElementById('custOrderPayType').value;
 
-      if (!name || !phone || !addr) { alert("ದಯವಿಟ್ಟು ಎಲ್ಲಾ ವಿವರಗಳನ್ನು ಭರ್ತಿ ಮಾಡಿ."); return; }
-      if (otp !== '1234') { alert("❌ ದಯವಿಟ್ಟು ಸರಿಯಾದ OTP (1234) ನಮೂದಿಸಿ!"); return; }
+      if (!name || !phone || !addr) {
+        document.getElementById('customAlertTitle').innerText = "ಎಚ್ಚರಿಕೆ";
+        document.getElementById('customAlertMessage').innerText = "ದಯವಿಟ್ಟು ಎಲ್ಲಾ ವಿವರಗಳನ್ನು ಭರ್ತಿ ಮಾಡಿ.";
+        document.getElementById('customAppAlertModal').classList.remove('hidden');
+        return;
+      }
+      if (otp !== '1234') {
+        document.getElementById('customAlertTitle').innerText = "ದೋಷ";
+        document.getElementById('customAlertMessage').innerText = "❌ ದಯವಿಟ್ಟು ಸರಿಯಾದ OTP (1234) ನಮೂದಿಸಿ!";
+        document.getElementById('customAppAlertModal').classList.remove('hidden');
+        return;
+      }
 
       localStorage.setItem('cust_verified_phone', phone);
       localStorage.setItem('cust_profile_name', name);
+
+      let custPins = JSON.parse(localStorage.getItem('all_customer_unique_pins') || '{}');
+      if(!custPins[phone]) {
+        custPins[phone] = Math.floor(1000 + Math.random() * 9000).toString();
+        localStorage.setItem('all_customer_unique_pins', JSON.stringify(custPins));
+      }
 
       const prods = JSON.parse(localStorage.getItem(`prods_${activeShop.id}`) || '[]');
       let summaryText = "", total = 0;
@@ -1072,11 +1735,12 @@
         if (prod) { summaryText += `${itemName} x ${qty}, `; total += qty * Number(prod.price); }
       }
 
+      const orderIdUnique = 'ORD_' + Date.now();
       const newOrder = {
-        id: 'ORD_' + Date.now(), shopId: activeShop.id, shopCode: activeShop.shopCode,
+        id: orderIdUnique, shopId: activeShop.id, shopCode: activeShop.shopCode,
         customerName: name, customerPhone: phone, customerAddr: addr,
         itemsSummary: summaryText, total: total, paymentType: payType,
-        status: payType === 'upi' ? 'Paid' : (payType === 'udri' ? 'Udri' : 'Placed'),
+        status: payType === 'upi' ? 'Paid' : 'Placed',
         date: new Date().toLocaleString()
       };
 
@@ -1084,36 +1748,26 @@
       orders.push(newOrder); 
       localStorage.setItem('shopOrders', JSON.stringify(orders));
 
-      if(payType === 'udri') {
-        let allLedgers = JSON.parse(localStorage.getItem(`ledger_${activeShop.id}`) || '{}');
-        if(!allLedgers[phone]) { allLedgers[phone] = { name: name, phone: phone, entries: [], totalDue: 0, status: 'Due' }; }
-        allLedgers[phone].entries.push({ date: new Date().toLocaleString(), items: summaryText, amount: total, paid: 0, type: 'ಆನ್ಲೈನ್ ಆರ್ಡರ್ ಉದ್ರಿ' });
-        allLedgers[phone].totalDue += total;
-        allLedgers[phone].status = 'Due';
-        localStorage.setItem(`ledger_${activeShop.id}`, JSON.stringify(allLedgers));
-        
-        if(window.FB_DB) {
-          await window.FB_set(window.FB_ref(window.FB_DB, `ledger_${activeShop.id}`), allLedgers);
-        }
-      }
-
       if(window.FB_DB) {
         await window.FB_set(window.FB_ref(window.FB_DB, 'shopOrders'), orders);
       }
 
-      if (checkoutMode === 'whatsapp' || payType === 'whatsapp') {
+      if (checkoutMode === 'whatsapp') {
         const sellerPhone = activeShop.phone || "919999999999";
-        const waText = encodeURIComponent(`🛒 ಹೊಸ ಆರ್ಡರ್ ಬಂದಿದೆ!\n\n👤 ಹೆಸರು: ${name}\n📞 ಫೋನ್: ${phone} (OTP Verified)\n📍 ವಿಳಾಸ: ${addr}\n📦 ವಸ್ತುಗಳು: ${summaryText}\n💰 ಒಟ್ಟು ಮೊತ್ತ: ₹${total}`);
-        window.open(`https://wa.me/${sellerPhone}?text=${waText}`, '_blank');
+        const waReceipt = `-----------------------------------\n🛒 TASKOS DUKAAN - NEW ORDER\nID: #${orderIdUnique.replace('ORD_', '')}\n-----------------------------------\n*ಹೆಸರು:* ${name}\n*ಫೋನ್:* ${phone}\n*ವಿಳಾಸ:* ${addr}\n*ಪಾವತಿ ಮೋಡ್:* ${payType.toUpperCase()}\n-----------------------------------\n*ವಸ್ತುಗಳು:*\n${summaryText}\n-----------------------------------\n*ಒಟ್ಟು ಮೊತ್ತ:* ₹${total}`;
+        window.open(`https://wa.me/${sellerPhone}?text=${encodeURIComponent(waReceipt)}`, '_blank');
       }
 
       cart = {};
       localStorage.removeItem(`persistent_cart_${activeShop.id}`);
-      closeCheckout(); 
-      updateCartUI(); 
+      closeCheckout();
+      updateCartUI();
       loadStoreProducts();
       checkActiveOrderTracker();
-      alert("✔ ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಕನ್ಫರ್ಮ್ ಆಯಿತು!");
+
+      document.getElementById('customAlertTitle').innerText = "ಯಶಸ್ಸು";
+      document.getElementById('customAlertMessage').innerText = `✔ ಆರ್ಡರ್ ಯಶಸ್ವಿಯಾಗಿ ಕನ್ಫರ್ಮ್ ಆಯಿತು! ಆರ್ಡರ್ ಐಡಿ: #${orderIdUnique.replace('ORD_', '')}`;
+      document.getElementById('customAppAlertModal').classList.remove('hidden');
     }
   </script>
 </body>

@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Seller Business Suite Pro - Tasko Dukaan</title>
+  <title>Seller Business Suite Master Pro - Tasko Dukaan</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Chart.js for Sales Graph -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <!-- Firebase SDKs -->
   <script type="module">
@@ -39,18 +41,181 @@
 </head>
 <body class="bg-gray-950 text-gray-100 font-sans min-h-screen pb-20 md:pb-8">
 
+  <!-- CUSTOM UNIQUE IN-APP ALERT / CONFIRM MODAL (Fixed Z-Index to stay on top of everything) -->
+  <div id="customAppAlertModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border-2 border-blue-600 w-full max-w-sm rounded-3xl p-6 text-center space-y-4 shadow-2xl">
+      <div id="customAlertIcon" class="w-14 h-14 bg-blue-600/20 text-blue-400 border border-blue-500/40 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+        ℹ️
+      </div>
+      <div>
+        <h3 id="customAlertTitle" class="text-lg font-black text-white">ಸೂಚನೆ</h3>
+        <p id="customAlertMessage" class="text-xs text-gray-300 mt-2 leading-relaxed">ಸಂದೇಶ ಇಲ್ಲಿದೆ...</p>
+      </div>
+      <div id="customAlertButtons" class="flex gap-2 pt-2">
+        <button id="customAlertOkBtn" onclick="closeCustomAlert()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow text-xs">
+          ಸರಿ (OK)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORE TIMINGS, STATUS & HOLIDAY SETTINGS MODAL -->
+  <div id="storeTimingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-blue-600/60 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+        <h3 id="modalTitleStoreSettings" class="font-bold text-white text-sm">⏰ ಅಂಗಡಿ ಸ್ಥಿತಿ, ಟೈಮಿಂಗ್ಸ್ & ರಜೆ ಸೆಟ್ಟಿಂಗ್ಸ್</h3>
+        <button onclick="closeStoreTimingsModal()" class="text-gray-400 text-base font-bold">✕</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div class="bg-gray-800 p-3 rounded-2xl flex justify-between items-center border border-gray-700">
+          <div>
+            <span id="modalStoreStatusLabel" class="font-bold text-white">ಅಂಗಡಿ ಓಪನ್/ಕ್ಲೋಸ್ ಸ್ಥಿತಿ:</span>
+            <p id="modalStoreStatusSub" class="text-[10px] text-gray-400">ಆನ್ ಮಾಡಿದರೆ ಕಸ್ಟಮರ್ ಆರ್ಡರ್ ಮಾಡಬಹುದು</p>
+          </div>
+          <button onclick="toggleStoreOpenStatusFromModal()" id="modalStoreStatusBtn" class="bg-green-500 text-black font-bold px-4 py-2 rounded-xl transition shadow">ಓಪನ್ ಇದೆ</button>
+        </div>
+        <div>
+          <label id="lblOpenTime" class="block text-gray-400 font-semibold mb-1">ಬೆಳಗ್ಗೆ ಓಪನಿಂಗ್ ಟೈಮ್ (Opening Time):</label>
+          <input type="time" id="storeOpenTimeInput" class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-white outline-none font-bold" value="08:00">
+        </div>
+        <div>
+          <label id="lblCloseTime" class="block text-gray-400 font-semibold mb-1">ಸಂಜೆ ಕ್ಲೋಸಿಂಗ್ ಟೈಮ್ (Closing Time):</label>
+          <input type="time" id="storeCloseTimeInput" class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-white outline-none font-bold" value="21:00">
+        </div>
+        <div class="border-t border-gray-800 pt-3 space-y-2">
+          <label id="lblHolidayAlert" class="block text-amber-400 font-bold">📅 ಮುಖಾಂತರ ರಜೆ ಅಥವಾ ವಿಶೇಷ ಅಲರ್ಟ್ (Holiday / Advance Alert):</label>
+          <input type="date" id="storeHolidayDateInput" class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-white outline-none">
+          <input type="text" id="storeHolidayMsgInput" placeholder="ಕಾರಣ (ಉದಾ: ನಾಳೆ ಹಬ್ಬದ ಕಾರಣ ಅಂಗಡಿ ಬಂದ್)" class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-white outline-none">
+        </div>
+        <button onclick="saveStoreTimingsAndHoliday()" id="btnSaveStoreSettings" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition shadow text-xs">
+          ಮಾಹಿತಿ ಸೇವ್ ಮಾಡಿ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PERFECT CENTERED POPUP MODAL FOR SELLER MENU -->
+  <div id="rightSideMenuDropdown" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 animate-fadeIn">
+    <div class="bg-gray-900 border-2 border-blue-600 w-full max-w-xs rounded-3xl p-5 space-y-3 shadow-2xl text-xs relative">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+        <span id="menuHeaderTitle" class="font-bold text-cyan-400 text-sm">⚙️ ಸೆಲ್ಲರ್ ಮೆನು</span>
+        <button onclick="toggleRightSideMenu()" class="text-gray-400 font-bold text-base px-2 py-0.5 rounded-lg bg-gray-800 hover:bg-gray-700">✕</button>
+      </div>
+
+      <!-- LANGUAGE SELECTOR INSIDE MENU -->
+      <div class="bg-gray-800 p-2.5 rounded-2xl border border-gray-700 flex justify-between items-center">
+        <span id="lblLangSelect" class="font-bold text-gray-300 text-xs">ಭಾಷೆ (Language):</span>
+        <select id="appLanguageSelect" onchange="changeAppLanguage(this.value)" class="bg-gray-900 text-cyan-400 font-bold text-xs p-1.5 rounded-xl outline-none border border-gray-700">
+          <option value="kn">ಕನ್ನಡ</option>
+          <option value="hi">हिंदी</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+
+      <button onclick="downloadDailySalesReportPDF(); toggleRightSideMenu();" id="menuSalesPdf" class="w-full text-left bg-gray-800 hover:bg-gray-700 text-purple-300 font-bold p-3 rounded-2xl flex items-center gap-2.5 transition">
+        🖨️ ಡೈಲಿ ಸೇಲ್ಸ್ ರಿಪೋರ್ಟ್ (PDF)
+      </button>
+      <button onclick="openQrModal(); toggleRightSideMenu();" id="menuQrStand" class="w-full text-left bg-gray-800 hover:bg-gray-700 text-cyan-300 font-bold p-3 rounded-2xl flex items-center gap-2.5 transition">
+        🖨️ QR ಸ್ಟ್ಯಾಂಡಿ ವೀಕ್ಷಿಸಿ
+      </button>
+      <button onclick="openProfileModal(); toggleRightSideMenu();" id="menuProfileSet" class="w-full text-left bg-gray-800 hover:bg-gray-700 text-white font-bold p-3 rounded-2xl flex items-center gap-2.5 transition">
+        ⚙️ ಅಂಗಡಿ ಪ್ರೊಫೈಲ್ ಸೆಟ್ಟಿಂಗ್ಸ್
+      </button>
+      <button onclick="openInAppHelpModal(); toggleRightSideMenu();" id="menuHelpCenter" class="w-full text-left bg-gray-800 hover:bg-gray-700 text-blue-300 font-bold p-3 rounded-2xl flex items-center gap-2.5 transition">
+        💬 ಅಡ್ಮಿನ್ ಸಹಾಯ ಕೇಂದ್ರ
+      </button>
+      <button onclick="logoutSeller();" id="menuLogout" class="w-full text-left bg-red-600/20 hover:bg-red-600/30 text-red-400 font-bold p-3 rounded-2xl flex items-center gap-2.5 transition border border-red-500/30">
+        🚪 ಲಾಗ್ ಔಟ್ (Logout)
+      </button>
+    </div>
+  </div>
+
+  <!-- MULTI-ORDER QUEUE ALERT MODAL WITH INSTANT ALARM -->
+  <div id="liveOrderAlertModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center hidden p-4 animate-pulse">
+    <div class="bg-gray-900 border-2 border-blue-600 w-full max-w-sm rounded-3xl p-6 text-center space-y-4 shadow-2xl">
+      <div class="w-16 h-16 bg-green-500/20 text-green-400 border border-green-500/40 rounded-full flex items-center justify-center mx-auto text-3xl animate-bounce">
+        🔔
+      </div>
+      <div>
+        <span id="queueBadgeCount" class="bg-green-500 text-black text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider">ಹೊಸ ಆನ್‌ಲೈನ್ ಆರ್ಡರ್ ಬಂದಿದೆ!</span>
+        <h3 id="alertOrderPriceBig" class="text-3xl font-black text-green-400 mt-2">₹0</h3>
+        <p id="alertOrderPaymentMode" class="text-xs font-bold text-cyan-400 mt-0.5 uppercase">ಪಾವತಿ: ----</p>
+      </div>
+      <div id="alertOrderDetailsBox" class="bg-gray-800 p-3 rounded-2xl text-xs text-left space-y-1 text-gray-300"></div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="acceptCurrentQueueOrder()" class="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-xl transition shadow text-xs">
+          ✔ ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಿ (Accept)
+        </button>
+        <button onclick="skipCurrentQueueOrder()" class="bg-gray-800 hover:bg-gray-700 text-gray-400 font-bold px-4 py-3 rounded-xl text-xs">
+          ಮುಂದಿನದು (Skip)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REJECTION REASON MODAL CARD -->
+  <div id="rejectReasonModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-gray-900 border border-red-500/40 w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+        <h3 id="rejectModalHeaderTitle" class="font-bold text-white text-sm">❌ ಆರ್ಡರ್ ತಿರಸ್ಕರಿಸಲು ಕಾರಣ (Reason)</h3>
+        <button onclick="closeRejectReasonModal()" class="text-gray-400 text-base font-bold">✕</button>
+      </div>
+      <p id="rejectModalSubTxt" class="text-xs text-gray-400">ದಯವಿಟ್ಟು ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಲು ಸರಿಯಾದ ಕಾರಣ ಆಯ್ಕೆಮಾಡಿ:</p>
+      
+      <div class="space-y-2 text-xs">
+        <label class="flex items-center gap-2.5 bg-gray-800 p-3 rounded-xl cursor-pointer border border-gray-700 hover:border-red-500 transition">
+          <input type="radio" name="rejectReason" value="ವಸ್ತುಗಳು ಸ್ಟಾಕ್‌ನಲ್ಲಿ ಇಲ್ಲ (Out of Stock)" checked class="accent-red-500">
+          <span id="rejOpt1" class="text-gray-200">ವಸ್ತುಗಳು ಸ್ಟಾಕ್‌ನಲ್ಲಿ ಇಲ್ಲ (Out of Stock)</span>
+        </label>
+        <label class="flex items-center gap-2.5 bg-gray-800 p-3 rounded-xl cursor-pointer border border-gray-700 hover:border-red-500 transition">
+          <input type="radio" name="rejectReason" value="ಅಂಗಡಿ ಮುಚ್ಚುವ ಸಮಯವಾಗಿದೆ (Store Closing)" class="accent-red-500">
+          <span id="rejOpt2" class="text-gray-200">ಅಂಗಡಿ ಮುಚ್ಚುವ ಸಮಯವಾಗಿದೆ (Store Closing)</span>
+        </label>
+        <label class="flex items-center gap-2.5 bg-gray-800 p-3 rounded-xl cursor-pointer border border-gray-700 hover:border-red-500 transition">
+          <input type="radio" name="rejectReason" value="ಸಂದೇಹಾಸ್ಪದ / ಫೇಕ್ ಆರ್ಡರ್ (Suspicious Order)" class="accent-red-500">
+          <span id="rejOpt3" class="text-gray-200">ಸಂದೇಹಾಸ್ಪದ / ಫೇಕ್ ಆರ್ಡರ್ (Suspicious Order)</span>
+        </label>
+        <label class="flex items-center gap-2.5 bg-gray-800 p-3 rounded-xl cursor-pointer border border-gray-700 hover:border-red-500 transition">
+          <input type="radio" name="rejectReason" value="ಇತರ ಕಾರಣಗಳು" class="accent-red-500">
+          <span id="rejOpt4" class="text-gray-200">ಇತರ ಕಾರಣಗಳು</span>
+        </label>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="confirmRejectOrderWithReason()" id="rejectModalConfirmBtn" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition shadow text-xs">
+          ಖಚಿತಪಡಿಸಿ ಕ್ಯಾನ್ಸಲ್ ಮಾಡಿ
+        </button>
+        <button onclick="closeRejectReasonModal()" id="rejectModalBackBtn" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-4 py-3 rounded-xl text-xs">
+          ಹಿಂದಕ್ಕೆ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ORDER INVOICE BILL VIEW -->
+  <div id="orderInvoiceModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white text-black w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl font-mono text-xs">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 id="invoiceModalHeaderTitle" class="font-black text-sm">📦 ಆರ್ಡರ್ ಇನ್ವಾಯ್ಸ್ / ಬಿಲ್</h3>
+        <button onclick="closeOrderInvoiceModal()" class="text-gray-600 font-bold text-base">✕</button>
+      </div>
+      <div id="invoiceModalContent" class="space-y-2"></div>
+      <button onclick="window.print()" id="invoicePrintBtn" class="w-full bg-green-600 text-white font-bold py-2.5 rounded-xl text-xs">ಪ್ರಿಂಟ್ / ಡೌನ್‌ಲೋಡ್</button>
+    </div>
+  </div>
+
   <!-- 1. SELLER LOGIN SCREEN -->
   <div id="sellerLoginScreen" class="max-w-md mx-auto my-12 p-6 bg-gray-900 border border-gray-800 rounded-3xl shadow-2xl text-center">
     <div class="w-16 h-16 bg-green-500/20 text-green-400 border border-green-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">
       🏪
     </div>
     <span class="text-[10px] bg-green-500/10 text-green-400 font-bold px-2 py-0.5 rounded-full border border-green-500/20">⚡ Tasko Dukaan Master Pro Active</span>
-    <h2 class="text-2xl font-black text-white mt-2">ವ್ಯಾಪಾರಿ ಲಾಗಿನ್ / ನೋಂದಣಿ</h2>
-    <p class="text-gray-400 text-xs mt-1">ನಿಮ್ಮ WhatsApp ಮೊಬೈಲ್ ನಂಬರ್ ನಮೂದಿಸಿ</p>
+    <h2 id="loginHeaderTitle" class="text-2xl font-black text-white mt-2">ವ್ಯಾಪಾರಿ ಲಾಗಿನ್ / ನೋಂದಣಿ</h2>
+    <p id="loginHeaderSub" class="text-gray-400 text-xs mt-1">ನಿಮ್ಮ WhatsApp ಮೊಬೈಲ್ ನಂಬರ್ ನಮೂದಿಸಿ</p>
     
     <div id="phoneStep" class="mt-6 space-y-4">
       <input type="tel" id="sellerPhoneInput" placeholder="10 ಅಂಕಿಗಳ ಮೊಬೈಲ್ ನಂಬರ್" class="w-full bg-gray-800 border border-gray-700 p-3.5 rounded-xl text-center text-lg text-white outline-none focus:border-green-500">
-      <button onclick="sendOtpStep()" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3.5 rounded-xl transition shadow-lg">
+      <button onclick="sendOtpStep()" id="loginOtpBtn" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3.5 rounded-xl transition shadow-lg">
         OTP ಪಡೆಯಿರಿ ➔
       </button>
     </div>
@@ -58,10 +223,10 @@
     <div id="otpStep" class="mt-6 space-y-4 hidden">
       <p id="otpHintText" class="text-xs text-green-400 font-semibold">ಫೈರ್‌ಬೇಸ್ ಮೂಲಕ ರಿಯಲ್ OTP ಸಿದ್ಧವಾಗಿದೆ</p>
       <input type="number" id="sellerOtpInput" placeholder="4 ಅಂಕಿಗಳ OTP" class="w-full bg-gray-800 border border-gray-700 p-3.5 rounded-xl text-center text-2xl tracking-widest text-white outline-none">
-      <button onclick="verifyOtpAndLogin()" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3.5 rounded-xl transition shadow-lg">
+      <button onclick="verifyOtpAndLogin()" id="loginVerifyBtn" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3.5 rounded-xl transition shadow-lg">
         ವೆರಿಫೈ ಮಾಡಿ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ತೆರೆಯಿರಿ ➔
       </button>
-      <button onclick="backToPhoneStep()" class="text-xs text-gray-500 underline block mx-auto">ನಂಬರ್ ಬದಲಾಯಿಸಿ</button>
+      <button onclick="backToPhoneStep()" id="loginChangeNumBtn" class="text-xs text-gray-500 underline block mx-auto">ನಂಬರ್ ಬದಲಾಯಿಸಿ</button>
     </div>
   </div>
 
@@ -72,23 +237,25 @@
       <div class="relative h-32 md:h-44 bg-gray-800">
         <img id="storeBannerImg" src="https://images.unsplash.com/photo-1578916171728-46686eac8d58?w=1200" class="w-full h-full object-cover opacity-60">
         <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent"></div>
+        
+        <!-- RIGHT SIDE: 3-DOT MENU BUTTON & SHOP CODE & LOGOUT -->
         <div class="absolute top-3 right-3 flex items-center gap-2">
-          <button onclick="openInAppHelpModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-full shadow flex items-center gap-1 transition">
-            💬 ಹೆಲ್ಪ್ / ಚಾಟ್
-          </button>
           <span class="bg-cyan-500/20 text-cyan-400 text-[11px] font-mono font-bold px-3 py-1 rounded-full border border-cyan-500/30" id="topHeaderShopCodeDisplay">ಶಾಪ್ ಕೋಡ್: ----</span>
+          
+          <button onclick="toggleRightSideMenu()" class="bg-gray-900/90 hover:bg-gray-800 text-white font-bold p-2.5 rounded-xl border border-blue-600/50 shadow flex items-center justify-center transition">
+            <span class="text-lg leading-none">⋮</span>
+          </button>
         </div>
       </div>
 
       <div class="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 -mt-12 relative z-10">
         <div class="flex items-center gap-4">
-          <div class="relative group cursor-pointer" onclick="document.getElementById('quickLogoUploadInput').click()">
+          <div class="relative group cursor-pointer" onclick="openProfileModal()">
             <img id="storeLogoImg" src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=500" class="w-20 h-20 rounded-2xl object-cover border-4 border-gray-900 shadow-xl bg-gray-800">
-            <div class="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center text-[10px] text-white opacity-0 group-hover:opacity-100 transition font-bold text-center p-1">ಬದಲಾಯಿಸಿ</div>
-            <input type="file" id="quickLogoUploadInput" accept="image/*" onchange="uploadDirectLogo(event)" class="hidden">
+            <div id="profileTxtOverlay" class="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center text-[10px] text-white opacity-0 group-hover:opacity-100 transition font-bold text-center p-1">ಪ್ರೊಫೈಲ್</div>
           </div>
           <div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <h1 id="storeTitle" class="text-xl md:text-2xl font-black text-white">ನನ್ನ ಅಂಗಡಿ</h1>
               <span id="sellerPlanBadge" class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-bold px-2.5 py-0.5 rounded-full">ಪ್ಲಾನ್: Free (₹0)</span>
             </div>
@@ -100,16 +267,10 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <button onclick="downloadDailySalesReportPDF()" class="bg-purple-500/20 hover:bg-purple-500 text-purple-300 hover:text-black border border-purple-500/30 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1 transition shadow">
-            🖨️ ಡೈಲಿ ಸೇಲ್ಸ್ ರಿಪೋರ್ಟ್ (PDF)
+          <!-- QUICK STORE TIMINGS / STATUS MODAL OPENER BUTTON -->
+          <button onclick="openStoreTimingsModal()" id="storeStatusToggleBtn" class="bg-green-500 text-black font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition shadow w-full md:w-auto justify-center">
+            🟢 ಅಂಗಡಿ ಓಪನ್ ಇದೆ (Open)
           </button>
-          <button onclick="openQrModal()" class="bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1 shadow">
-            🖨️ QR ಸ್ಟ್ಯಾಂಡಿ
-          </button>
-          <button onclick="openProfileModal()" class="bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl border border-gray-700">
-            ⚙️ ಪ್ರೊಫೈಲ್ & ಡೆಲಿವರಿ ಸೆಟ್ಟಿಂಗ್
-          </button>
-          <button onclick="logoutSeller()" class="bg-gray-800 text-gray-400 hover:text-red-400 text-xs px-3 py-2 rounded-xl border border-gray-700">✕</button>
         </div>
       </div>
     </div>
@@ -117,67 +278,102 @@
     <!-- 1. MASTER LINK & WHATSAPP SHARE BOX -->
     <div class="bg-gray-900 border border-green-500/30 p-5 rounded-3xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
       <div class="flex-1 w-full">
-        <h3 class="font-bold text-white text-sm">🔗 ನಿಮ್ಮ ಅಂಗಡಿಯ ಆನ್‌ಲೈನ್ ಶಾಪಿಂಗ್ ಲಿಂಕ್ & ವಾಟ್ಸಾಪ್ ಶೇರ್</h3>
+        <h3 id="lblStoreLinkTitle" class="font-bold text-white text-sm">🔗 ನಿಮ್ಮ ಅಂಗಡಿಯ ಆನ್‌ಲೈನ್ ಶಾಪಿಂಗ್ ಲಿಂಕ್ & ವಾಟ್ಸಾಪ್ ಶೇರ್</h3>
         <input type="text" id="sellerStoreLinkBox" readonly class="mt-2 bg-gray-800 border border-gray-700 text-xs text-green-400 font-bold p-2.5 rounded-xl w-full outline-none">
       </div>
       <div class="flex items-center gap-2 w-full md:w-auto">
-        <button onclick="copySellerStoreLink()" class="flex-1 md:flex-none bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs px-4 py-3 rounded-xl border border-gray-700 transition">📋 ಕಾಪಿ</button>
-        <button onclick="shareViaWhatsApp()" class="flex-1 md:flex-none bg-green-500 hover:bg-green-600 text-black font-bold text-xs px-4 py-3 rounded-xl transition shadow">📢 ವಾಟ್ಸಾಪ್ ಶೇರ್</button>
+        <button onclick="copySellerStoreLink()" id="btnCopyLink" class="flex-1 md:flex-none bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs px-4 py-3 rounded-xl border border-gray-700 transition">📋 ಕಾಪಿ</button>
+        <button onclick="shareViaWhatsApp()" id="btnShareWa" class="flex-1 md:flex-none bg-green-500 hover:bg-green-600 text-black font-bold text-xs px-4 py-3 rounded-xl transition shadow">📢 ವಾಟ್ಸಾಪ್ ಶೇರ್</button>
       </div>
     </div>
 
     <!-- 2. STORE REFERRAL LINK BOX -->
     <div class="bg-gray-900 border border-purple-500/30 p-5 rounded-3xl shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
       <div class="flex-1 w-full">
-        <h3 class="font-bold text-white text-sm">🤝 ಸ್ಟೋರ್ ರೆಫರಲ್ / ಆನ್‌ಬೋರ್ಡಿಂಗ್ ಲಿಂಕ್ (Seller Referral)</h3>
+        <h3 id="lblRefLinkTitle" class="font-bold text-white text-sm">🤝 ಸ್ಟೋರ್ ರೆಫರಲ್ / ಆನ್‌ಬೋರ್ಡಿಂಗ್ ಲಿಂಕ್ (Seller Referral)</h3>
         <input type="text" id="sellerReferralLinkBox" readonly class="mt-2 bg-gray-800 border border-gray-700 text-xs text-purple-400 font-bold p-2.5 rounded-xl w-full outline-none">
       </div>
       <div class="flex items-center gap-2 w-full md:w-auto">
-        <button onclick="copySellerReferralLink()" class="flex-1 md:flex-none bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs px-4 py-3 rounded-xl border border-gray-700 transition">📋 ಕಾಪಿ</button>
-        <button onclick="shareSellerReferralWhatsApp()" class="flex-1 md:flex-none bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs px-4 py-3 rounded-xl transition shadow">📢 ರೆಫರ್ ಶೇರ್</button>
+        <button onclick="copySellerReferralLink()" id="btnCopyRef" class="flex-1 md:flex-none bg-gray-800 hover:bg-gray-700 text-white font-bold text-xs px-4 py-3 rounded-xl border border-gray-700 transition">📋 ಕಾಪಿ</button>
+        <button onclick="shareSellerReferralWhatsApp()" id="btnShareRefWa" class="flex-1 md:flex-none bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs px-4 py-3 rounded-xl transition shadow">📢 ರೆಫರ್ ಶೇರ್</button>
       </div>
     </div>
 
     <!-- Metrics Row -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div class="bg-gray-900 border border-gray-800 p-4 rounded-2xl">
-        <p class="text-[11px] text-gray-400 font-semibold uppercase">ಇಂದಿನ ಒಟ್ಟು ಸೇಲ್ಸ್</p>
+        <p id="lblMetricSales" class="text-[11px] text-gray-400 font-semibold uppercase">ಇಂದಿನ ಒಟ್ಟು ಸೇಲ್ಸ್</p>
         <h3 id="metricSales" class="text-xl md:text-2xl font-black text-white mt-1">₹0</h3>
       </div>
       <div class="bg-gray-900 border border-gray-800 p-4 rounded-2xl">
-        <p class="text-[11px] text-gray-400 font-semibold uppercase">ಒಟ್ಟು ಆರ್ಡರ್ಸ್</p>
+        <p id="lblMetricOrders" class="text-[11px] text-gray-400 font-semibold uppercase">ಒಟ್ಟು ಆರ್ಡರ್ಸ್</p>
         <h3 id="metricOrders" class="text-xl md:text-2xl font-black text-green-400 mt-1">0</h3>
       </div>
       <div class="bg-gray-900 border border-gray-800 p-4 rounded-2xl">
-        <p class="text-[11px] text-gray-400 font-semibold uppercase">ಬಾಕಿ ಉದ್ರಿ (Due)</p>
+        <p id="lblMetricUdri" class="text-[11px] text-gray-400 font-semibold uppercase">ಬಾಕಿ ಉದ್ರಿ (Due)</p>
         <h3 id="metricUdri" class="text-xl md:text-2xl font-black text-amber-400 mt-1">₹0</h3>
       </div>
       <div class="bg-gray-900 border border-gray-800 p-4 rounded-2xl">
-        <p class="text-[11px] text-gray-400 font-semibold uppercase">ಶಾಪ್ ಕೋಡ್</p>
+        <p id="lblMetricShopCode" class="text-[11px] text-gray-400 font-semibold uppercase">ಶಾಪ್ ಕೋಡ್</p>
         <h3 id="metricShopCodeBox" class="text-xl md:text-2xl font-black text-cyan-400 mt-1 font-mono">----</h3>
       </div>
     </div>
 
+    <!-- INTERACTIVE YEAR & MONTH SELECTOR SALES GRAPH SECTION -->
+    <div class="bg-gray-900 border border-blue-600/40 p-5 rounded-3xl shadow-xl space-y-4">
+      <div class="flex justify-between items-center flex-wrap gap-2">
+        <div>
+          <h3 id="graphHeadingTitle" class="font-bold text-white text-sm flex items-center gap-1.5">📈 ಮಾಸಿಕ & ವಾರ್ಷಿಕ ಸೇಲ್ಸ್ ಟ್ರೆಂಡ್ (Monthly Tracker)</h3>
+          <p id="graphHeadingSub" class="text-[11px] text-gray-400">ವರ್ಷ ಮತ್ತು ತಿಂಗಳು ಆಯ್ಕೆಮಾಡಿ ಗ್ರಾಫ್ ವೀಕ್ಷಿಸಿ</p>
+        </div>
+        <!-- YEAR & MONTH DROPDOWNS -->
+        <div class="flex items-center gap-2">
+          <select id="chartYearSelect" onchange="updateChartData()" class="bg-gray-800 border border-gray-700 text-cyan-400 font-bold text-xs p-2 rounded-xl outline-none">
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+          </select>
+          <select id="chartMonthSelect" onchange="updateChartData()" class="bg-gray-800 border border-gray-700 text-green-400 font-bold text-xs p-2 rounded-xl outline-none">
+            <option value="All" id="optAllMonths">ಎಲ್ಲಾ ತಿಂಗಳುಗಳು (All)</option>
+            <option value="01" id="optJan">ಜನವರಿ (Jan)</option>
+            <option value="02" id="optFeb">ಫೆಬ್ರವರಿ (Feb)</option>
+            <option value="03" id="optMar">ಮಾರ್ಚ್ (Mar)</option>
+            <option value="04" id="optApr">ಏಪ್ರಿಲ್ (Apr)</option>
+            <option value="05" id="optMay">ಮೇ (May)</option>
+            <option value="06" id="optJun">ಜೂನ್ (Jun)</option>
+            <option value="07" id="optJul">ಜುಲೈ (Jul)</option>
+            <option value="08" id="optAug">ಆಗಸ್ಟ್ (Aug)</option>
+            <option value="09" id="optSep">ಸೆಪ್ಟೆಂಬರ್ (Sep)</option>
+            <option value="10" id="optOct">ಅಕ್ಟೋಬರ್ (Oct)</option>
+            <option value="11" id="optNov">ನವೆಂಬರ್ (Nov)</option>
+            <option value="12" id="optDec">ಡಿಸೆಂಬರ್ (Dec)</option>
+          </select>
+        </div>
+      </div>
+      <div class="w-full h-52 bg-gray-950 p-3 rounded-2xl border border-gray-800 relative">
+        <canvas id="salesTrendChart"></canvas>
+      </div>
+    </div>
+
     <!-- Navigation Tabs -->
-    <div class="flex border-b border-gray-800 text-sm font-bold">
-      <button onclick="selectTab('inventory')" id="tabInv" class="flex-1 py-3 text-green-400 border-b-2 border-green-500 text-center">📦 ಪ್ರಾಡಕ್ಟ್ಸ್ & ಸ್ಟಾಕ್</button>
-      <button onclick="selectTab('orders')" id="tabOrd" class="flex-1 py-3 text-gray-400 text-center">📑 ಲೈವ್ ಆರ್ಡರ್ಸ್</button>
-      <button onclick="selectTab('khata')" id="tabKha" class="flex-1 py-3 text-gray-400 text-center">📕 ಉದ್ರಿ ಖಾತಾ ಬುಕ್</button>
-      <button onclick="selectTab('reviews')" id="tabRev" class="flex-1 py-3 text-gray-400 text-center">⭐ ಕಸ್ಟಮರ್ ರೇಟಿಂಗ್ಸ್</button>
+    <div class="flex border-b border-gray-800 text-sm font-bold overflow-x-auto">
+      <button onclick="selectTab('inventory')" id="tabInv" class="flex-1 py-3 text-green-400 border-b-2 border-green-500 text-center whitespace-nowrap px-3">📦 ಪ್ರಾಡಕ್ಟ್ಸ್ & ಸ್ಟಾಕ್</button>
+      <button onclick="selectTab('orders')" id="tabOrd" class="flex-1 py-3 text-gray-400 text-center whitespace-nowrap px-3">📑 ಲೈವ್ ಆರ್ಡರ್ಸ್</button>
+      <button onclick="selectTab('khata')" id="tabKha" class="flex-1 py-3 text-gray-400 text-center whitespace-nowrap px-3">📕 ಉದ್ರಿ ಖಾತಾ ಬುಕ್</button>
+      <button onclick="selectTab('reviews')" id="tabRev" class="flex-1 py-3 text-gray-400 text-center whitespace-nowrap px-3">⭐ ಕಸ್ಟಮರ್ ರೇಟಿಂಗ್ಸ್</button>
     </div>
 
     <!-- SECTION 1: INVENTORY -->
     <div id="sectionInventory" class="space-y-4">
       <div class="flex justify-between items-center">
-        <h2 class="font-bold text-white text-base">ಲಭ್ಯವಿರುವ ಸಾಮಗ್ರಿಗಳು</h2>
-        <button onclick="openProductModal()" class="bg-green-500 hover:bg-green-600 text-black font-bold text-xs px-4 py-2 rounded-xl transition shadow">+ ಹೊಸ ವಸ್ತು ಸೇರಿಸಿ</button>
+        <h2 id="lblInvTitle" class="font-bold text-white text-base">ಲಭ್ಯವಿರುವ ಸಾಮಗ್ರಿಗಳು</h2>
+        <button onclick="openProductModal()" id="btnAddProduct" class="bg-green-500 hover:bg-green-600 text-black font-bold text-xs px-4 py-2 rounded-xl transition shadow">+ ಹೊಸ ವಸ್ತು ಸೇರಿಸಿ</button>
       </div>
       <div id="sellerProductGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
     </div>
 
     <!-- SECTION 2: LIVE ORDERS -->
     <div id="sectionOrders" class="hidden space-y-3">
-      <h2 class="font-bold text-white text-base">ಕಸ್ಟಮರ್‌ಗಳಿಂದ ಬಂದ ಲೈವ್ ಆರ್ಡರ್‌ಗಳು</h2>
+      <h2 id="lblLiveOrdTitle" class="font-bold text-white text-base">ಕಸ್ಟಮರ್‌ಗಳಿಂದ ಬಂದ ಲೈವ್ ಆರ್ಡರ್‌ಗಳು</h2>
       <div id="sellerOrdersList" class="space-y-3"></div>
     </div>
 
@@ -185,18 +381,18 @@
     <div id="sectionKhata" class="hidden space-y-4">
       <div class="flex flex-col md:flex-row justify-between items-center bg-gray-900 border border-gray-800 p-4 rounded-2xl gap-3">
         <div class="w-full md:w-auto">
-          <h2 class="font-bold text-white text-base">ಸ್ಮಾರ್ಟ್ ಖಾತಾ ಬುಕ್ (Ledger)</h2>
-          <p class="text-xs text-gray-400">ಬಾಕಿ ಇರುವವರು ಮತ್ತು ಸೆಟಲ್ ಆದವರ ಪ್ರತ್ಯೇಕ ಪಟ್ಟಿ</p>
+          <h2 id="lblKhataTitle" class="font-bold text-white text-base">ಸ್ಮಾರ್ಟ್ ಖಾತಾ ಬುಕ್ (Ledger)</h2>
+          <p id="lblKhataSub" class="text-xs text-gray-400">ಬಾಕಿ ಇರುವವರು ಮತ್ತು ಸೆಟಲ್ ಆದವರ ಪ್ರತ್ಯೇಕ ಪಟ್ಟಿ</p>
         </div>
         <div class="flex items-center gap-2 w-full md:w-auto">
           <input type="text" id="searchKhataInput" onkeyup="filterKhataList()" placeholder="🔍 ಕಸ್ಟಮರ್ ಹೆಸರು / ನಂಬರ್..." class="bg-gray-800 border border-gray-700 text-xs px-3 py-2 rounded-xl text-white outline-none w-full md:w-64">
-          <button onclick="openKhataModal()" class="bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs px-4 py-2.5 rounded-xl transition shadow whitespace-nowrap">+ ಹೊಸ ಉದ್ರಿ</button>
+          <button onclick="openKhataModal()" id="btnAddUdhari" class="bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs px-4 py-2.5 rounded-xl transition shadow whitespace-nowrap">+ ಹೊಸ ಉದ್ರಿ</button>
         </div>
       </div>
 
-      <div class="flex gap-2 border-b border-gray-800 pb-2">
-        <button onclick="switchKhataSubTab('due')" id="subTabDueBtn" class="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold px-4 py-2 rounded-xl transition">⏳ ಬಾಕಿ ಇರುವವರು (Due)</button>
-        <button onclick="switchKhataSubTab('settled')" id="subTabSettledBtn" class="bg-gray-800 text-gray-400 border border-gray-700 text-xs font-bold px-4 py-2 rounded-xl transition">✔ ಸಂಪೂರ್ಣ ಸೆಟಲ್ ಆದವರು (Settled)</button>
+      <div class="flex gap-2 border-b border-gray-800 pb-2 overflow-x-auto">
+        <button onclick="switchKhataSubTab('due')" id="subTabDueBtn" class="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold px-4 py-2 rounded-xl transition whitespace-nowrap">⏳ ಬಾಕಿ ಇರುವವರು (Due)</button>
+        <button onclick="switchKhataSubTab('settled')" id="subTabSettledBtn" class="bg-gray-800 text-gray-400 border border-gray-700 text-xs font-bold px-4 py-2 rounded-xl transition whitespace-nowrap">✔ ಸಂಪೂರ್ಣ ಸೆಟಲ್ ಆದವರು (Settled)</button>
       </div>
 
       <div id="sellerKhataList" class="space-y-3"></div>
@@ -204,7 +400,7 @@
 
     <!-- SECTION 4: CUSTOMER RATINGS & REVIEWS -->
     <div id="sectionReviews" class="hidden space-y-4">
-      <h2 class="font-bold text-white text-base">⭐ ಗ್ರಾಹಕರ ರೇಟಿಂಗ್ಸ್ & ರಿವ್ಯೂಸ್ (Synced Live)</h2>
+      <h2 id="lblReviewsTitle" class="font-bold text-white text-base">⭐ ಗ್ರಾಹಕರ ರೇಟಿಂಗ್ಸ್ & ರಿವ್ಯೂಸ್ (Synced Live)</h2>
       <div id="sellerSyncedReviewsList" class="space-y-3"></div>
     </div>
 
@@ -212,7 +408,7 @@
 
   <!-- MODAL: MULTI-ITEM SMART KHATA ENTRY -->
   <div id="khataEntryModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-gray-900 border border-blue-600/60 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
       <div class="flex justify-between items-center">
         <h3 class="font-bold text-white text-lg">📕 ಹೊಸ ಉದ್ರಿ ಖಾತೆ ಎಂಟ್ರಿ</h3>
         <button onclick="closeKhataModal()" class="text-gray-400 text-lg">✕</button>
@@ -246,23 +442,33 @@
     </div>
   </div>
 
-  <!-- MODAL: PARTIAL SETTLEMENT -->
+  <!-- MODAL: SETTLEMENT & HISTORY (TICK & CONFIRM WITH DEPENDENT ACTIVE BUTTON) -->
   <div id="settlementModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-gray-900 border border-blue-600/60 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
       <div class="flex justify-between items-center">
-        <h3 class="font-bold text-white text-base">📂 ಖಾತಾ ಹಿಸ್ಟರಿ & ಸೆಟಲ್ಮೆಂಟ್</h3>
+        <h3 id="settlementModalHeaderTitle" class="font-bold text-white text-base">📂 ಖಾತಾ ಹಿಸ್ಟರಿ & ಸೆಟಲ್ಮೆಂಟ್</h3>
         <button onclick="closeSettlementModal()" class="text-gray-400 text-lg">✕</button>
       </div>
+
       <div id="settlementCustomerInfo" class="bg-gray-800 p-3.5 rounded-2xl text-xs space-y-1"></div>
       
+      <div class="flex gap-2">
+        <button onclick="sendWhatsAppKhataReminder()" id="settlementWaBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
+          💬 ವಾಟ್ಸಾಪ್ ರಿಮೈಂಡರ್
+        </button>
+        <button onclick="downloadKhataStatementPDF()" id="settlementPdfBtn" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs transition shadow flex items-center justify-center gap-1.5">
+          🖨️ PDF ಸ್ಟೇಟ್‌ಮೆಂಟ್
+        </button>
+      </div>
+
       <div class="bg-gray-800/60 p-3.5 rounded-2xl border border-gray-700 space-y-3">
-        <button type="button" onclick="toggleAddMoreBox()" class="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-bold py-2.5 rounded-xl text-xs transition border border-amber-500/30">
+        <button type="button" onclick="toggleAddMoreBox()" id="settlementAddMoreBtn" class="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-bold py-2.5 rounded-xl text-xs transition border border-amber-500/30">
           + ಈ ಗ್ರಾಹಕನಿಗೆ ಮಲ್ಟಿ-ಐಟಮ್ ಉದ್ರಿ ಆಡ್ ಮಾಡಿ
         </button>
         <div id="addMoreUdhariBox" class="hidden space-y-3 pt-2 border-t border-gray-700">
           <div class="flex justify-between items-center">
-            <label class="text-xs font-bold text-green-400">ಹೊಸ ವಸ್ತುಗಳು (Unlimited):</label>
-            <button type="button" onclick="addModalKhataItemRow()" class="bg-gray-900 text-green-400 font-bold text-[11px] px-2 py-1 rounded border border-gray-700">+ ಆಡ್ ಮಾಡಿ</button>
+            <label id="settlementNewItemLbl" class="text-xs font-bold text-green-400">ಹೊಸ ವಸ್ತುಗಳು (Unlimited):</label>
+            <button type="button" onclick="addModalKhataItemRow()" id="settlementAddBtn" class="bg-gray-900 text-green-400 font-bold text-[11px] px-2 py-1 rounded border border-gray-700">+ ಆಡ್ ಮಾಡಿ</button>
           </div>
           <div id="modalKhataItemsContainer" class="space-y-2">
             <div class="flex gap-2 modal-khata-row">
@@ -271,27 +477,30 @@
             </div>
           </div>
           <div class="bg-gray-900 p-2.5 rounded-xl flex justify-between items-center font-bold text-xs text-white">
-            <span>ಹೊಸ ಒಟ್ಟು:</span>
+            <span id="settlementNewTotalLbl">ಹೊಸ ಒಟ್ಟು:</span>
             <span id="modalKhataCalculatedTotal" class="text-green-400">₹0</span>
           </div>
-          <button onclick="saveMoreMultiItemUdhari()" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-2.5 rounded-xl transition shadow">
+          <button onclick="saveMoreMultiItemUdhari()" id="settlementSaveMoreBtn" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-2.5 rounded-xl transition shadow">
             ಹೊಸ ಉದ್ರಿ ಸೇವ್ ಮಾಡಿ
           </button>
         </div>
       </div>
 
-      <div class="space-y-3 pt-2 border-t border-gray-800">
-        <div>
-          <label class="block text-xs font-semibold text-gray-400 mb-1">ಸ್ವೀಕರಿಸಿದ ಹಣ (Partial Payment) *</label>
-          <input type="number" id="settlementPaidAmount" placeholder="ಉದಾ: 100" class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-white outline-none font-bold text-green-400">
-        </div>
-        <button onclick="processPartialPayment()" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-xl transition shadow">
-          ಹಣ ಸ್ವೀಕರಿಸಿ ಬಾಕಿ ಅಪ್ಡೇಟ್ ಮಾಡಿ
+      <!-- TICK & CONFIRM SETTLEMENT BOX (Button active ONLY when checkbox is checked) -->
+      <div class="space-y-3 pt-2 border-t border-gray-800 bg-gray-800/80 p-4 rounded-2xl border border-green-500/30">
+        <label class="flex items-center gap-2.5 cursor-pointer">
+          <input type="checkbox" id="settlementTickCheckbox" onchange="toggleSettlementButtonState()" class="w-4 h-4 accent-green-500 rounded">
+          <span id="settlementTickLabel" class="text-xs font-bold text-green-400">✔ ಪಾವತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ (Payment Received)</span>
+        </label>
+        <input type="number" id="settlementPaidAmount" placeholder="ಪಾವತಿಸಿದ ಮೊತ್ತ (₹)" class="w-full bg-gray-900 border border-gray-700 p-2.5 rounded-xl text-white outline-none font-bold text-green-400 text-xs">
+        
+        <button disabled onclick="processTickConfirmationSettlement()" id="settlementConfirmSettleBtn" class="w-full bg-gray-800 text-gray-500 font-bold py-3 rounded-xl transition shadow text-xs cursor-not-allowed">
+          ಕನ್ಫರ್ಮ್ ಮಾಡಿ ಬಾಕಿ ಕ್ಲಿಯರ್ ಮಾಡಿ
         </button>
       </div>
       
       <div class="border-t border-gray-800 pt-3">
-        <p class="text-xs font-bold text-gray-400 mb-2">ದಿನಾಂಕ ವೈಸ್ ವಹಿವಾಟು ಹಿಸ್ಟರಿ:</p>
+        <p id="settlementHistoryLogTitle" class="text-xs font-bold text-gray-400 mb-2">ದಿನಾಂಕ ವೈಸ್ ವಹಿವಾಟು ಹಿಸ್ಟರಿ:</p>
         <div id="settlementHistoryLog" class="space-y-2 max-h-40 overflow-y-auto text-xs"></div>
       </div>
     </div>
@@ -299,7 +508,7 @@
 
   <!-- MODAL: IN-APP HELP -->
   <div id="inAppHelpModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
+    <div class="bg-gray-900 border border-blue-600/60 w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl">
       <div class="flex justify-between items-center"><h3 class="font-bold text-white text-base">💬 ಅಡ್ಮಿನ್ ಸಹಾಯ ಕೇಂದ್ರ</h3><button onclick="closeInAppHelpModal()" class="text-gray-400">✕</button></div>
       <textarea id="helpMessageInput" rows="4" placeholder="ನಿಮ್ಮ ಸಮಸ್ಯೆ ಇಲ್ಲಿ ಬರೆಯಿರಿ..." class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-xs text-white outline-none"></textarea>
       <button onclick="sendHelpMessageToAdmin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs">ಅಡ್ಮಿನ್‌ಗೆ ಕಳುಹಿಸಿ</button>
@@ -308,7 +517,7 @@
 
   <!-- MODAL: QR STAND -->
   <div id="qrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-gray-900 border border-gray-800 w-full max-w-xs rounded-3xl p-6 text-center space-y-4 shadow-2xl">
+    <div class="bg-gray-900 border border-blue-600/60 w-full max-w-xs rounded-3xl p-6 text-center space-y-4 shadow-2xl">
       <div class="flex justify-between items-center"><h3 class="font-bold text-white text-sm">ಅಂಗಡಿಯ ಪ್ರತ್ಯೇಕ QR ಕೋಡ್</h3><button onclick="closeQrModal()" class="text-gray-400">✕</button></div>
       <div class="bg-white p-5 rounded-2xl flex flex-col items-center justify-center shadow-xl text-black">
         <h4 id="qrShopTitleDisplay" class="font-black text-base">ನನ್ನ ಅಂಗಡಿ</h4>
@@ -319,18 +528,30 @@
     </div>
   </div>
 
-  <!-- MODAL: PROFILE & CUSTOM DELIVERY BANNER SETTINGS -->
+  <!-- MODAL: PROFILE & GOOGLE MAPS URL SYNC -->
   <div id="profileModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg">ಅಂಗಡಿ ಪ್ರೊಫೈಲ್ & ಡೆಲಿವರಿ ಸೆಟ್ಟಿಂಗ್</h3><button onclick="closeProfileModal()" class="text-gray-400 text-lg">✕</button></div>
+    <div class="bg-gray-900 border border-blue-600/60 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg">ಅಂಗಡಿ ಪ್ರೊಫೈಲ್ & ಮ್ಯಾಪ್ ಸೆಟ್ಟಿಂಗ್ಸ್</h3><button onclick="closeProfileModal()" class="text-gray-400 text-lg">✕</button></div>
       <form onsubmit="saveProfileData(event)" class="space-y-3">
         <div><label class="block text-xs font-semibold text-gray-400 mb-1">ಅಂಗಡಿ ಹೆಸರು *</label><input type="text" id="editShopNameInput" required class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-white outline-none"></div>
         <div><label class="block text-xs font-semibold text-gray-400 mb-1">ವಿಳಾಸ *</label><input type="text" id="editShopAddrInput" required class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-white outline-none"></div>
-        <div><label class="block text-xs font-semibold text-cyan-400 mb-1">📍 Google Maps URL</label><input type="url" id="editShopMapInput" class="w-full bg-gray-800 border border-cyan-500/40 p-3 rounded-xl text-white outline-none text-xs"></div>
+        <div>
+          <label class="block text-xs font-semibold text-cyan-400 mb-1">📍 Google Maps URL (ಕಸ್ಟಮರ್ ಪೇಜ್‌ನಲ್ಲಿ ಸಿಂಕ್ ಆಗುತ್ತದೆ)</label>
+          <input type="url" id="editShopMapInput" placeholder="https://maps.app.goo.gl/..." class="w-full bg-gray-800 border border-cyan-500/40 p-3 rounded-xl text-white outline-none text-xs">
+        </div>
         
         <div>
           <label class="block text-xs font-semibold text-green-400 mb-1">🚚 ಕಸ್ಟಮ್ ಡೆಲಿವರಿ ಬ್ಯಾನರ್ ಟೆಕ್ಸ್ಟ್ (ಉದಾ: 3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ!)</label>
           <input type="text" id="editShopDeliveryBannerInput" placeholder="3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ!" class="w-full bg-gray-800 border border-green-500/40 p-3 rounded-xl text-white outline-none text-xs font-bold">
+        </div>
+
+        <div class="bg-gray-800 p-3.5 rounded-2xl border border-purple-500/30 space-y-2">
+          <label class="block text-xs font-bold text-purple-400">🖼️ ಅಂಗಡಿಯ ದೊಡ್ಡ ಬ್ಯಾನರ್ ಫೋಟೋ ಅಪ್ಲೋಡ್ ಮಾಡಿ</label>
+          <input type="file" id="editShopBannerFile" accept="image/*" onchange="compressAndPreviewBanner(event)" class="w-full text-xs text-gray-400 bg-gray-900 border border-gray-700 p-2 rounded-xl">
+          <div class="h-28 w-full mx-auto bg-gray-900 rounded-xl overflow-hidden border border-gray-700 flex items-center justify-center p-1 mt-2">
+            <img id="bannerPreviewTag" src="" class="h-full w-full object-cover hidden">
+            <span id="noBannerPreviewText" class="text-[10px] text-gray-500">ಬ್ಯಾನರ್ ಫೋಟೋ ಆಯ್ಕೆಮಾಡಿ</span>
+          </div>
         </div>
 
         <div class="bg-gray-800 p-3.5 rounded-2xl border border-cyan-500/30 space-y-2">
@@ -342,14 +563,14 @@
           </div>
         </div>
 
-        <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3.5 rounded-xl transition shadow">ಪ್ರೊಫೈಲ್ & ಸೆಟ್ಟಿಂಗ್ಸ್ ಸೇವ್ ಮಾಡಿ</button>
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition shadow">ಪ್ರೊಫೈಲ್ & ಮ್ಯಾಪ್ ಲಿಂಕ್ ಸೇವ್ ಮಾಡಿ</button>
       </form>
     </div>
   </div>
 
   <!-- PRODUCT MODAL -->
   <div id="productModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-gray-900 border border-blue-600/60 w-full max-w-md rounded-3xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
       <div class="flex justify-between items-center"><h3 class="font-bold text-white text-lg">ಹೊಸ ವಸ್ತು ಸೇರಿಸಿ</h3><button onclick="closeProductModal()" class="text-gray-400">✕</button></div>
       <form onsubmit="saveNewProduct(event)" class="space-y-3">
         <div><label class="block text-xs font-semibold text-gray-400 mb-1">ವಸ್ತುವಿನ ಹೆಸರು *</label><input type="text" id="formProdName" required class="w-full bg-gray-800 border border-gray-700 p-3 rounded-xl text-white outline-none"></div>
@@ -374,12 +595,393 @@
     let currentShop = null;
     let currentBase64Image = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=500";
     let currentPaymentQrBase64 = "";
+    let currentCustomBannerBase64 = "";
     let selectedKhataCustomerPhone = null;
     let currentKhataSubTab = 'due';
+    let lastKnownOrdersCount = 0;
+    
+    let incomingOrdersQueue = [];
+    let currentAlertOrder = null;
+    let alarmIntervalId = null;
+    let currentLang = 'kn';
+    let salesChartInstance = null;
+
+    const langData = {
+      kn: {
+        menuTitle: "⚙️ ಸೆಲ್ಲರ್ ಮೆನು",
+        salesPdf: "🖨️ ಡೈಲಿ ಸೇಲ್ಸ್ ರಿಪೋರ್ಟ್ (PDF)",
+        qrStand: "🖨️ QR ಸ್ಟ್ಯಾಂಡಿ ವೀಕ್ಷಿಸಿ",
+        profileSet: "⚙️ ಅಂಗಡಿ ಪ್ರೊಫೈಲ್ ಸೆಟ್ಟಿಂಗ್ಸ್",
+        helpCenter: "💬 ಅಡ್ಮಿನ್ ಸಹಾಯ ಕೇಂದ್ರ",
+        logoutBtn: "🚪 ಲಾಗ್ ಔಟ್ (Logout)",
+        storeLinkTitle: "🔗 ನಿಮ್ಮ ಅಂಗಡಿಯ ಆನ್‌ಲೈನ್ ಶಾಪಿಂಗ್ ಲಿಂಕ್ & ವಾಟ್ಸಾಪ್ ಶೇರ್",
+        copyBtn: "📋 ಕಾಪಿ",
+        waShareBtn: "📢 ವಾಟ್ಸಾಪ್ ಶೇರ್",
+        refLinkTitle: "🤝 ಸ್ಟೋರ್ ರೆಫರಲ್ / ಆನ್‌ಬೋರ್ಡಿಂಗ್ ಲಿಂಕ್",
+        refCopyBtn: "📋 ಕಾಪಿ",
+        refShareBtn: "📢 ರೆಫರ್ ಶೇರ್",
+        metricSales: "ಇಂದಿನ ಒಟ್ಟು ಸೇಲ್ಸ್",
+        metricOrders: "ಒಟ್ಟು ಆರ್ಡರ್ಸ್",
+        metricUdri: "ಬಾಕಿ ಉದ್ರಿ (Due)",
+        metricShopCode: "ಶಾಪ್ ಕೋಡ್",
+        tabInv: "📦 ಪ್ರಾಡಕ್ಟ್ಸ್ & ಸ್ಟಾಕ್",
+        tabOrd: "📑 ಲೈವ್ ಆರ್ಡರ್ಸ್",
+        tabKha: "📕 ಉದ್ರಿ ಖಾತಾ ಬುಕ್",
+        tabRev: "⭐ ಕಸ್ಟಮರ್ ರೇಟಿಂಗ್ಸ್",
+        graphTitle: "📈 ಮಾಸಿಕ & ವಾರ್ಷಿಕ ಸೇಲ್ಸ್ ಟ್ರೆಂಡ್",
+        graphSub: "ವರ್ಷ ಮತ್ತು ತಿಂಗಳು ಆಯ್ಕೆಮಾಡಿ ಗ್ರಾಫ್ ವೀಕ್ಷಿಸಿ",
+        optAllMonths: "ಎಲ್ಲಾ ತಿಂಗಳುಗಳು (All)",
+        settlementTitle: "📂 ಖಾತಾ ಹಿಸ್ಟರಿ & ಸೆಟಲ್ಮೆಂಟ್",
+        waRemBtn: "💬 ವಾಟ್ಸಾಪ್ ರಿಮೈಂಡರ್",
+        pdfStmtBtn: "🖨️ PDF ಸ್ಟೇಟ್‌ಮೆಂಟ್",
+        addMoreUdhariBtn: "+ ಈ ಗ್ರಾಹಕನಿಗೆ ಮಲ್ಟಿ-ಐಟಮ್ ಉದ್ರಿ ಆಡ್ ಮಾಡಿ",
+        newItemLbl: "ಹೊಸ ವಸ್ತುಗಳು (Unlimited):",
+        addItemBtn: "+ ಆಡ್ ಮಾಡಿ",
+        newTotalLbl: "ಹೊಸ ಒಟ್ಟು:",
+        saveMoreBtn: "ಹೊಸ ಉದ್ರಿ ಸೇವ್ ಮಾಡಿ",
+        tickLabel: "✔ ಪಾವತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ (Payment Received)",
+        confirmSettleBtn: "ಕನ್ಫರ್ಮ್ ಮಾಡಿ ಬಾಕಿ ಕ್ಲಿಯರ್ ಮಾಡಿ",
+        historyLogTitle: "ದಿನಾಂಕ ವೈಸ್ ವಹಿವಾಟು ಹಿಸ್ಟರಿ:"
+      },
+      en: {
+        menuTitle: "⚙️ Seller Menu",
+        salesPdf: "🖨️ Daily Sales Report (PDF)",
+        qrStand: "🖨️ View QR Standy",
+        profileSet: "⚙️ Store Profile Settings",
+        helpCenter: "💬 Help Center",
+        logoutBtn: "🚪 Logout",
+        storeLinkTitle: "🔗 Your Online Shopping Link & WhatsApp Share",
+        copyBtn: "📋 Copy",
+        waShareBtn: "📢 WA Share",
+        refLinkTitle: "🤝 Store Referral / Onboarding Link",
+        refCopyBtn: "📋 Copy",
+        refShareBtn: "📢 Refer Share",
+        metricSales: "Today's Total Sales",
+        metricOrders: "Total Orders",
+        metricUdri: "Pending Udhari (Due)",
+        metricShopCode: "Shop Code",
+        tabInv: "📦 Products & Stock",
+        tabOrd: "📑 Live Orders",
+        tabKha: "📕 Ledger Book",
+        tabRev: "⭐ Customer Reviews",
+        graphTitle: "📈 Monthly & Yearly Sales Trend",
+        graphSub: "Select year and month to view graph",
+        optAllMonths: "All Months",
+        settlementTitle: "📂 Ledger History & Settlement",
+        waRemBtn: "💬 WhatsApp Reminder",
+        pdfStmtBtn: "🖨️ PDF Statement",
+        addMoreUdhariBtn: "+ Add Multi-Item Udhari to Customer",
+        newItemLbl: "New Items (Unlimited):",
+        addItemBtn: "+ Add",
+        newTotalLbl: "New Total:",
+        saveMoreBtn: "Save New Udhari",
+        tickLabel: "✔ Payment Received",
+        confirmSettleBtn: "Confirm & Clear Due",
+        historyLogTitle: "Date-wise Transaction History:"
+      },
+      hi: {
+        menuTitle: "⚙️ विक्रेता मेनू",
+        salesPdf: "🖨️ दैनिक बिक्री रिपोर्ट (PDF)",
+        qrStand: "🖨️ QR स्टैंड देखें",
+        profileSet: "⚙️ स्टोर प्रोफ़ाइल सेटिंग्स",
+        helpCenter: "💬 सहायता केंद्र",
+        logoutBtn: "🚪 लॉग आउट (Logout)",
+        storeLinkTitle: "🔗 आपकी ऑनलाइन शॉपिंग लिंक और व्हाट्सएप शेयर",
+        copyBtn: "📋 कॉपी",
+        waShareBtn: "📢 व्हाट्सएप शेयर",
+        refLinkTitle: "🤝 स्टोर रेफरल / ऑनबोर्डिंग लिंक",
+        refCopyBtn: "📋 कॉपी",
+        refShareBtn: "📢 रेफर शेयर",
+        metricSales: "आज की कुल बिक्री",
+        metricOrders: "कुल ऑर्डर्स",
+        metricUdri: "बकाया उधारी (Due)",
+        metricShopCode: "शॉप कोड",
+        tabInv: "📦 प्रोडक्ट्स & स्टॉक",
+        tabOrd: "📑 लाइव ऑर्डर्स",
+        tabKha: "📕 उधारी खाता बुक",
+        tabRev: "⭐ ग्राहक रेटिंग्स",
+        graphTitle: "📈 मासिक और वार्षिक बिक्री प्रवृत्ति",
+        graphSub: "वर्ष और महीना चुनकर ग्राफ देखें",
+        optAllMonths: "सभी महीने (All)",
+        settlementTitle: "📂 खाता इतिहास और निपटान",
+        waRemBtn: "💬 व्हाट्सएप रिमाइंडर",
+        pdfStmtBtn: "🖨️ PDF स्टेटमेंट",
+        addMoreUdhariBtn: "+ इस ग्राहक को मल्टी-आइटम उधारी जोड़ें",
+        newItemLbl: "नए सामान (Unlimited):",
+        addItemBtn: "+ जोड़ें",
+        newTotalLbl: "नया कुल:",
+        saveMoreBtn: "नई उधारी सेव करें",
+        tickLabel: "✔ भुगतान प्राप्त हुआ (Payment Received)",
+        confirmSettleBtn: "कन्फर्म कर बकाया साफ़ करें",
+        historyLogTitle: "दिनांक वार लेनदेन इतिहास:"
+      }
+    };
+
+    function changeAppLanguage(lang) {
+      currentLang = lang;
+      const t = langData[lang];
+      document.getElementById('menuHeaderTitle').innerText = t.menuTitle;
+      document.getElementById('menuSalesPdf').innerText = t.salesPdf;
+      document.getElementById('menuQrStand').innerText = t.qrStand;
+      document.getElementById('menuProfileSet').innerText = t.profileSet;
+      document.getElementById('menuHelpCenter').innerText = t.helpCenter;
+      document.getElementById('menuLogout').innerText = t.logoutBtn;
+      document.getElementById('lblStoreLinkTitle').innerText = t.storeLinkTitle;
+      document.getElementById('btnCopyLink').innerText = t.copyBtn;
+      document.getElementById('btnShareWa').innerText = t.waShareBtn;
+      document.getElementById('lblRefLinkTitle').innerText = t.refLinkTitle;
+      document.getElementById('btnCopyRef').innerText = t.refCopyRef;
+      document.getElementById('btnShareRefWa').innerText = t.refShareRefWa;
+      document.getElementById('lblMetricSales').innerText = t.metricSales;
+      document.getElementById('lblMetricOrders').innerText = t.metricOrders;
+      document.getElementById('lblMetricUdri').innerText = t.metricUdri;
+      document.getElementById('lblMetricShopCode').innerText = t.metricShopCode;
+      document.getElementById('tabInv').innerText = t.tabInv;
+      document.getElementById('tabOrd').innerText = t.tabOrd;
+      document.getElementById('tabKha').innerText = t.tabKha;
+      document.getElementById('tabRev').innerText = t.tabRev;
+      document.getElementById('graphHeadingTitle').innerText = t.graphTitle;
+      document.getElementById('graphHeadingSub').innerText = t.graphSub;
+      document.getElementById('optAllMonths').innerText = t.optAllMonths;
+      document.getElementById('settlementModalHeaderTitle').innerText = t.settlementTitle;
+      document.getElementById('settlementWaBtn').innerText = t.waRemBtn;
+      document.getElementById('settlementPdfBtn').innerText = t.pdfStmtBtn;
+      document.getElementById('settlementAddMoreBtn').innerText = t.addMoreUdhariBtn;
+      document.getElementById('settlementNewItemLbl').innerText = t.newItemLbl;
+      document.getElementById('settlementAddBtn').innerText = t.addItemBtn;
+      document.getElementById('settlementNewTotalLbl').innerText = t.newTotalLbl;
+      document.getElementById('settlementSaveMoreBtn').innerText = t.saveMoreBtn;
+      document.getElementById('settlementTickLabel').innerText = t.tickLabel;
+      document.getElementById('settlementConfirmSettleBtn').innerText = t.confirmSettleBtn;
+      document.getElementById('settlementHistoryLogTitle').innerText = t.historyLogTitle;
+      updateStoreOpenCloseButtonUI();
+    }
+
+    function openQrModal() {
+      document.getElementById('qrShopTitleDisplay').innerText = currentShop.name;
+      document.getElementById('qrShopCodeDisplay').innerText = `ಶಾಪ್ ಕೋಡ್: ${currentShop.shopCode}`;
+      const qrContainer = document.getElementById('qrDynamicContainer'); 
+      qrContainer.innerHTML = "";
+      new QRCode(qrContainer, { 
+        text: `${window.location.origin}/shop.html?id=${currentShop.id}`, 
+        width: 170, 
+        height: 170 
+      });
+      document.getElementById('qrModal').classList.remove('hidden');
+    }
+    function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
+
+    // Toggle button active state based on checkbox selection
+    function toggleSettlementButtonState() {
+      const isChecked = document.getElementById('settlementTickCheckbox').checked;
+      const btn = document.getElementById('settlementConfirmSettleBtn');
+      if(isChecked) {
+        btn.disabled = false;
+        btn.className = "w-full bg-green-500 hover:bg-green-600 text-black font-bold py-3 rounded-xl transition shadow text-xs cursor-pointer";
+      } else {
+        btn.disabled = true;
+        btn.className = "w-full bg-gray-800 text-gray-500 font-bold py-3 rounded-xl transition shadow text-xs cursor-not-allowed";
+      }
+    }
+
+    function renderSalesChart(ordersData) {
+      const ctx = document.getElementById('salesTrendChart').getContext('2d');
+      const selectedYear = document.getElementById('chartYearSelect').value;
+      const selectedMonth = document.getElementById('chartMonthSelect').value;
+      
+      let dailySales = {};
+      ordersData.forEach(ord => {
+        if(ord && ord.status !== 'Cancelled' && ord.date) {
+          let ordDateStr = ord.date;
+          if(selectedYear && !ordDateStr.includes(selectedYear)) return;
+          if(selectedMonth !== 'All' && !ordDateStr.includes(`/${selectedMonth}/`) && !ordDateStr.includes(`-${selectedMonth}-`)) return;
+
+          let dayKey = ordDateStr.split(',')[0].trim();
+          dailySales[dayKey] = (dailySales[dayKey] || 0) + Number(ord.total || 0);
+        }
+      });
+
+      let labels = Object.keys(dailySales);
+      let dataValues = Object.values(dailySales);
+
+      if(labels.length === 0) {
+        labels = ["ಯಾವುದೇ ಡಾಟಾ ಇಲ್ಲ"];
+        dataValues = [0];
+      }
+
+      if(salesChartInstance) {
+        salesChartInstance.destroy();
+      }
+
+      salesChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'ಸೇಲ್ಸ್ (₹)',
+            data: dataValues,
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#22c55e',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#1f2937' } },
+            y: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#1f2937' } }
+          }
+        }
+      });
+    }
+
+    function updateChartData() {
+      renderSalesChart(window._cachedOrders || []);
+    }
+
+    function showCustomAppAlert(title, message, callback = null) {
+      document.getElementById('customAlertTitle').innerText = title;
+      document.getElementById('customAlertMessage').innerText = message;
+      window._customAlertCallback = callback;
+      document.getElementById('customAppAlertModal').classList.remove('hidden');
+    }
+
+    function showCustomAppConfirm(title, message, onConfirm) {
+      document.getElementById('customAlertTitle').innerText = title;
+      document.getElementById('customAlertMessage').innerText = message;
+      const btnContainer = document.getElementById('customAlertButtons');
+      btnContainer.innerHTML = `
+        <button onclick="document.getElementById('customAppAlertModal').classList.add('hidden');" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-3 rounded-xl transition shadow text-xs">ಕ್ಯಾನ್ಸಲ್</button>
+        <button id="customConfirmYesBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow text-xs">ಹೌದು (Confirm)</button>
+      `;
+      document.getElementById('customConfirmYesBtn').onclick = () => {
+        document.getElementById('customAppAlertModal').classList.add('hidden');
+        if(onConfirm) onConfirm();
+      };
+      document.getElementById('customAppAlertModal').classList.remove('hidden');
+    }
+
+    function closeCustomAlert() {
+      document.getElementById('customAppAlertModal').classList.add('hidden');
+      if(window._customAlertCallback) {
+        window._customAlertCallback();
+        window._customAlertCallback = null;
+      }
+    }
+
+    function openStoreTimingsModal() {
+      if(currentShop) {
+        document.getElementById('storeOpenTimeInput').value = currentShop.openTime || '08:00';
+        document.getElementById('storeCloseTimeInput').value = currentShop.closeTime || '21:00';
+        document.getElementById('storeHolidayDateInput').value = currentShop.holidayDate || '';
+        document.getElementById('storeHolidayMsgInput').value = currentShop.holidayMsg || '';
+        updateModalStoreStatusBtnUI();
+      }
+      document.getElementById('storeTimingsModal').classList.remove('hidden');
+    }
+    function closeStoreTimingsModal() {
+      document.getElementById('storeTimingsModal').classList.add('hidden');
+    }
+
+    async function toggleStoreOpenStatusFromModal() {
+      if(!currentShop || !window.FB_DB) return;
+      currentShop.isStoreOpen = currentShop.isStoreOpen === false ? true : false;
+      updateModalStoreStatusBtnUI();
+      updateStoreOpenCloseButtonUI();
+
+      const db = window.FB_DB;
+      const snapshot = await window.FB_get(window.FB_ref(db, 'allPlatformShops'));
+      if(snapshot.exists()) {
+        let allShops = snapshot.val();
+        let idx = allShops.findIndex(s => s.id === currentShop.id);
+        if(idx >= 0) {
+          allShops[idx].isStoreOpen = currentShop.isStoreOpen;
+          await window.FB_set(window.FB_ref(db, 'allPlatformShops'), allShops);
+        }
+      }
+    }
+
+    function updateModalStoreStatusBtnUI() {
+      const b = document.getElementById('modalStoreStatusBtn');
+      if(!b) return;
+      if(currentShop.isStoreOpen !== false) {
+        b.className = "bg-green-500 text-black font-bold px-4 py-2 rounded-xl transition shadow";
+        b.innerText = "ಓಪನ್ ಇದೆ";
+      } else {
+        b.className = "bg-red-600 text-white font-bold px-4 py-2 rounded-xl transition shadow";
+        b.innerText = "ಬಂದ್ ಇದೆ";
+      }
+    }
+
+    async function saveStoreTimingsAndHoliday() {
+      if(!currentShop || !window.FB_DB) return;
+      currentShop.openTime = document.getElementById('storeOpenTimeInput').value;
+      currentShop.closeTime = document.getElementById('storeCloseTimeInput').value;
+      currentShop.holidayDate = document.getElementById('storeHolidayDateInput').value;
+      currentShop.holidayMsg = document.getElementById('storeHolidayMsgInput').value.trim();
+
+      const db = window.FB_DB;
+      const snapshot = await window.FB_get(window.FB_ref(db, 'allPlatformShops'));
+      if(snapshot.exists()) {
+        let allShops = snapshot.val();
+        let idx = allShops.findIndex(s => s.id === currentShop.id);
+        if(idx >= 0) {
+          allShops[idx] = currentShop;
+          await window.FB_set(window.FB_ref(db, 'allPlatformShops'), allShops);
+        }
+      }
+      closeStoreTimingsModal();
+      showCustomAppAlert("ಯಶಸ್ಸು", "✔ ಅಂಗಡಿ ಟೈಮಿಂಗ್ಸ್ ಮತ್ತು ರಜೆ ಮಾಹಿತಿ ಯಶಸ್ವಿಯಾಗಿ ಸೇವ್ ಆಗಿದೆ!");
+    }
+
+    function toggleRightSideMenu() {
+      const menu = document.getElementById('rightSideMenuDropdown');
+      menu.classList.toggle('hidden');
+    }
+
+    function startContinuousAlarm() {
+      stopContinuousAlarm();
+      playSingleAlarmBeep();
+      alarmIntervalId = setInterval(() => {
+        playSingleAlarmBeep();
+      }, 2000);
+    }
+
+    function stopContinuousAlarm() {
+      if (alarmIntervalId) {
+        clearInterval(alarmIntervalId);
+        alarmIntervalId = null;
+      }
+    }
+
+    function playSingleAlarmBeep() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        [0, 0.25].forEach(delay => {
+          const osc = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(750, audioCtx.currentTime + delay);
+          osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + delay + 0.15);
+          gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime + delay);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.2);
+          osc.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          osc.start(audioCtx.currentTime + delay);
+          osc.stop(audioCtx.currentTime + delay + 0.2);
+        });
+      } catch(e) {}
+    }
 
     function sendOtpStep() {
       const phone = document.getElementById('sellerPhoneInput').value.trim();
-      if(phone.length < 10) { alert("ಸರಿಯಾದ 10 ಅಂಕಿಗಳ ನಂಬರ್ ಹಾಕಿ"); return; }
+      if(phone.length < 10) { showCustomAppAlert("ಎಚ್ಚರಿಕೆ", "ಸರಿಯಾದ 10 ಅಂಕಿಗಳ ನಂಬರ್ ಹಾಕಿ"); return; }
       document.getElementById('phoneStep').classList.add('hidden');
       document.getElementById('otpStep').classList.remove('hidden');
     }
@@ -388,7 +990,7 @@
     async function verifyOtpAndLogin() {
       const enteredOtp = document.getElementById('sellerOtpInput').value.trim();
       const phone = document.getElementById('sellerPhoneInput').value.trim();
-      if(enteredOtp.length < 4) { alert("ಸರಿಯಾದ OTP ನಮೂದಿಸಿ!"); return; }
+      if(enteredOtp.length < 4) { showCustomAppAlert("ಎಚ್ಚರಿಕೆ", "ಸರಿಯಾದ OTP ನಮೂದಿಸಿ!"); return; }
 
       const db = window.FB_DB;
       const ref = window.FB_ref;
@@ -405,15 +1007,23 @@
       let found = allShops.find(s => s.phone === phone);
       if(!found) {
         const uniqueCode = Math.floor(1000 + Math.random() * 9000).toString();
-        found = { id: 'shop_' + phone, shopCode: uniqueCode, name: 'ನನ್ನ ಅಂಗಡಿ', phone: phone, addr: 'ಬೆಂಗಳೂರು', mapUrl: '', paymentQr: '', deliveryBanner: '3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ!', logo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500', plan: 'Free', planPrice: '₹0', status: 'Active' };
+        const uniquePin = Math.floor(1000 + Math.random() * 9000).toString();
+        found = { id: 'shop_' + phone, shopCode: uniqueCode, securityPin: uniquePin, name: 'ನನ್ನ ಅಂಗಡಿ', phone: phone, addr: 'ಬೆಂಗಳೂರು', mapUrl: '', paymentQr: '', bannerImg: '', deliveryBanner: '3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ!', isStoreOpen: true, openTime: '08:00', closeTime: '21:00', holidayDate: '', holidayMsg: '', logo: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500', plan: 'Free', planPrice: '₹0', status: 'Active' };
         allShops.push(found);
         await set(ref(db, 'allPlatformShops'), allShops);
+      } else {
+        if(!found.securityPin) {
+          found.securityPin = Math.floor(1000 + Math.random() * 9000).toString();
+          await set(ref(db, 'allPlatformShops'), allShops);
+        }
+        if(found.isStoreOpen === undefined) found.isStoreOpen = true;
       }
       currentShop = found; 
       localStorage.setItem('lastActiveShopId', currentShop.id);
       document.getElementById('sellerLoginScreen').classList.add('hidden');
       document.getElementById('sellerApp').classList.remove('hidden');
       initSellerDashboard();
+      setInterval(pollForNewOrders, 3000);
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
@@ -425,7 +1035,13 @@
           if (snapshot.exists()) {
             let allShops = snapshot.val();
             let found = allShops.find(s => s.id === lastShopId);
-            if (found) { currentShop = found; document.getElementById('sellerLoginScreen').classList.add('hidden'); document.getElementById('sellerApp').classList.remove('hidden'); initSellerDashboard(); }
+            if (found) { 
+              currentShop = found; 
+              document.getElementById('sellerLoginScreen').classList.add('hidden'); 
+              document.getElementById('sellerApp').classList.remove('hidden'); 
+              initSellerDashboard(); 
+              setInterval(pollForNewOrders, 3000);
+            }
           }
         } catch(e) { console.error(e); }
       }
@@ -436,7 +1052,6 @@
     async function initSellerDashboard() {
       if(!currentShop) return;
       
-      // Live Sync latest shop data from Firebase to reflect Admin Subscription Price & Status
       if(window.FB_DB) {
         try {
           const snap = await window.FB_get(window.FB_ref(window.FB_DB, 'allPlatformShops'));
@@ -453,7 +1068,8 @@
       document.getElementById('topHeaderShopCodeDisplay').innerText = `ಶಾಪ್ ಕೋಡ್: ${currentShop.shopCode}`;
       document.getElementById('metricShopCodeBox').innerText = currentShop.shopCode;
       
-      // Update Subscription Plan Badge & Dynamic Price from Admin Control
+      updateStoreOpenCloseButtonUI();
+
       const planBadge = document.getElementById('sellerPlanBadge');
       const planName = currentShop.plan || currentShop.subscription || 'Free';
       const planPrice = currentShop.planPrice || currentShop.price || (planName.toLowerCase() === 'pro' || planName.toLowerCase() === 'paid' ? '₹99' : '₹0');
@@ -466,8 +1082,19 @@
       }
       
       document.getElementById('storeLogoImg').src = currentShop.logo || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=500";
+      
+      if(currentShop.bannerImg) {
+        document.getElementById('storeBannerImg').src = currentShop.bannerImg;
+      }
 
-      if (currentShop.mapUrl) { const m = document.getElementById('storeMapLinkBtn'); m.href = currentShop.mapUrl; m.classList.remove('hidden'); }
+      if (currentShop.mapUrl) { 
+        const m = document.getElementById('storeMapLinkBtn'); 
+        m.href = currentShop.mapUrl; 
+        m.classList.remove('hidden'); 
+      } else {
+        document.getElementById('storeMapLinkBtn').classList.add('hidden');
+      }
+
       document.getElementById('sellerStoreLinkBox').value = `${window.location.origin}/shop.html?id=${currentShop.id}`;
       document.getElementById('sellerReferralLinkBox').value = `${window.location.origin}/seller.html?ref=${currentShop.shopCode}`;
       
@@ -476,9 +1103,175 @@
       await loadSyncedCustomerReviews();
     }
 
+    async function toggleStoreOpenStatus() {
+      openStoreTimingsModal();
+    }
+
+    function updateStoreOpenCloseButtonUI() {
+      const btn = document.getElementById('storeStatusToggleBtn');
+      if(!btn) return;
+      if(currentShop.isStoreOpen !== false) {
+        btn.className = "bg-green-500 text-black font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition shadow w-full md:w-auto justify-center";
+        btn.innerText = "🟢 ಅಂಗಡಿ ಓಪನ್ ಇದೆ (Open)";
+      } else {
+        btn.className = "bg-red-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition shadow w-full md:w-auto justify-center";
+        btn.innerText = "🔴 ಅಂಗಡಿ ಬಂದ್ ಇದೆ (Closed)";
+      }
+    }
+
+    async function pollForNewOrders() {
+      if(!currentShop || !window.FB_DB) return;
+      try {
+        const snap = await window.FB_get(window.FB_ref(window.FB_DB, 'shopOrders'));
+        if(snap.exists()) {
+          let orders = snap.val().filter(o => o && o.shopId === currentShop.id);
+          let placedOrders = orders.filter(o => o.status === 'Placed');
+
+          if(placedOrders.length > 0) {
+            let latestPlaced = placedOrders[placedOrders.length - 1];
+            if(!currentAlertOrder || currentAlertOrder.id !== latestPlaced.id) {
+              currentAlertOrder = latestPlaced;
+              startContinuousAlarm();
+              processQueueOrderDisplay(placedOrders);
+            }
+          } else {
+            stopContinuousAlarm();
+            currentAlertOrder = null;
+            document.getElementById('liveOrderAlertModal').classList.add('hidden');
+          }
+
+          if(orders.length !== lastKnownOrdersCount) {
+            lastKnownOrdersCount = orders.length;
+            loadSellerOrdersAndKhata();
+          }
+        }
+      } catch(e) {}
+    }
+
+    function processQueueOrderDisplay(placedOrders) {
+      if(placedOrders.length === 0) {
+        stopContinuousAlarm();
+        currentAlertOrder = null;
+        document.getElementById('liveOrderAlertModal').classList.add('hidden');
+        return;
+      }
+
+      currentAlertOrder = placedOrders[0];
+
+      document.getElementById('queueBadgeCount').innerText = `ಹೊಸ ಆನ್‌ಲೈನ್ ಆರ್ಡರ್! (ಬಾಕಿ: ${placedOrders.length})`;
+      document.getElementById('alertOrderPriceBig').innerText = `₹${currentAlertOrder.total}`;
+      document.getElementById('alertOrderPaymentMode').innerText = `ಪಾವತಿ ವಿಧಾನ: ${(currentAlertOrder.paymentType || 'cod').toUpperCase()}`;
+      document.getElementById('alertOrderDetailsBox').innerHTML = `
+        <p><b>ಗ್ರಾಹಕರು:</b> ${currentAlertOrder.customerName} (${currentAlertOrder.customerPhone})</p>
+        <p><b>ವಿಳಾಸ:</b> ${currentAlertOrder.customerAddr}</p>
+        <p><b>ವಸ್ತುಗಳು:</b> ${currentAlertOrder.itemsSummary}</p>
+        <p class="text-gray-400 font-mono text-[10px]">ದಿನಾಂಕ: ${currentAlertOrder.date}</p>
+      `;
+      document.getElementById('liveOrderAlertModal').classList.remove('hidden');
+    }
+
+    async function acceptCurrentQueueOrder() {
+      if(!currentAlertOrder || !window.FB_DB) return;
+      const db = window.FB_DB;
+      const snapshot = await window.FB_get(window.FB_ref(db, 'shopOrders'));
+      let orders = snapshot.exists() ? snapshot.val() : [];
+      let ord = orders.find(o => o && o.id === currentAlertOrder.id);
+      if(ord) {
+        ord.status = 'Preparing';
+        await window.FB_set(window.FB_ref(db, 'shopOrders'), orders);
+        loadSellerOrdersAndKhata();
+      }
+
+      stopContinuousAlarm();
+      currentAlertOrder = null;
+      document.getElementById('liveOrderAlertModal').classList.add('hidden');
+      showCustomAppAlert("ಯಶಸ್ಸು", "✔ ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ ('Preparing')!");
+    }
+
+    function skipCurrentQueueOrder() {
+      stopContinuousAlarm();
+      document.getElementById('liveOrderAlertModal').classList.add('hidden');
+    }
+
+    function openRejectReasonModal(ordId) {
+      orderToRejectId = ordId;
+      document.getElementById('rejectReasonModal').classList.remove('hidden');
+    }
+    function closeRejectReasonModal() {
+      orderToRejectId = null;
+      document.getElementById('rejectReasonModal').classList.add('hidden');
+    }
+
+    async function confirmRejectOrderWithReason() {
+      if(!orderToRejectId || !window.FB_DB) { closeRejectReasonModal(); return; }
+      const selectedRadio = document.querySelector('input[name="rejectReason"]:checked');
+      const reasonText = selectedRadio ? selectedRadio.value : 'ಇತರ ಕಾರಣಗಳು';
+
+      const db = window.FB_DB;
+      const snapshot = await window.FB_get(window.FB_ref(db, 'shopOrders'));
+      let orders = snapshot.exists() ? snapshot.val() : [];
+      let ord = orders.find(o => o && o.id === orderToRejectId);
+
+      if(ord) {
+        ord.status = 'Cancelled';
+        ord.cancelReason = reasonText;
+        await window.FB_set(window.FB_ref(db, 'shopOrders'), orders);
+        stopContinuousAlarm();
+        currentAlertOrder = null;
+        document.getElementById('liveOrderAlertModal').classList.add('hidden');
+        loadSellerOrdersAndKhata();
+        showCustomAppAlert("ರದ್ದು", `❌ ಆರ್ಡರ್ ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ. ಕಾರಣ: ${reasonText}`);
+      }
+      closeRejectReasonModal();
+    }
+
+    function toggleModalPinVisibility() {
+      const pinInput = document.getElementById('modalSecretPinDisplay');
+      const eyeBtn = document.getElementById('pinToggleEyeBtn');
+      if (pinInput.type === "password") {
+        pinInput.type = "text";
+        eyeBtn.innerText = "🙈 ಮುಚ್ಚಿ";
+      } else {
+        pinInput.type = "password";
+        eyeBtn.innerText = "👁️ ತೋರಿಸಿ";
+      }
+    }
+
+    async function generateNewModalPin() {
+      const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+      currentShop.securityPin = newPin;
+      document.getElementById('modalSecretPinDisplay').value = newPin;
+      
+      if(window.FB_DB) {
+        const snapshot = await window.FB_get(window.FB_ref(window.FB_DB, 'allPlatformShops'));
+        if(snapshot.exists()) {
+          let allShops = snapshot.val();
+          let idx = allShops.findIndex(s => s.id === currentShop.id);
+          if(idx >= 0) {
+            allShops[idx].securityPin = newPin;
+            await window.FB_set(window.FB_ref(db, 'allPlatformShops'), allShops);
+          }
+        }
+      }
+      showCustomAppAlert("ಪಿನ್ ಅಪ್ಡೇಟ್", `✔ ಹೊಸ ಸೆಕ್ಯೂರ್ ಪಿನ್ ಜನರೇಟ್ ಆಯಿತು: ${newPin}`);
+    }
+
+    function sendWhatsAppKhataReminder() {
+      if(!selectedKhataCustomerPhone) return;
+      const customerName = document.getElementById('settlementCustomerInfo').innerText.split('(')[0].replace('👤 ಕಸ್ಟಮರ್:', '').trim();
+      const dueText = document.getElementById('settlementCustomerInfo').innerText.match(/₹[\d]+/)[0];
+      const msg = encodeURIComponent(`ನಮಸ್ಕಾರ ${customerName}, ನಿಮ್ಮ ${currentShop.name} ಅಂಗಡಿಯಲ್ಲಿ ಬಾಕಿ ಇರುವ ಉದ್ರಿ ಮೊತ್ತ ${dueText}. ದಯವಿಟ್ಟು ಆದಷ್ಟು ಬೇಗ ಪಾವತಿಸಿ ಧನ್ಯವಾದಗಳು.`);
+      window.open(`https://wa.me/${selectedKhataCustomerPhone}?text=${msg}`, '_blank');
+    }
+
+    function downloadKhataStatementPDF() {
+      if(!selectedKhataCustomerPhone) return;
+      window.print();
+    }
+
     function copySellerReferralLink() {
       navigator.clipboard.writeText(document.getElementById('sellerReferralLinkBox').value);
-      alert("✔ ಸೆಲ್ಲರ್ ರೆಫರಲ್ ಲಿಂಕ್ ಕಾಪಿ ಆಗಿದೆ!");
+      showCustomAppAlert("ಲಿಂಕ್ ಕಾಪಿ", "✔ ಸೆಲ್ಲರ್ ರೆಫರಲ್ ಲಿಂಕ್ ಕಾಪಿ ಆಗಿದೆ!");
     }
 
     function shareSellerReferralWhatsApp() {
@@ -487,24 +1280,14 @@
       window.open(`https://wa.me/?text=${text}`, '_blank');
     }
 
-    async function uploadDirectLogo(event) {
+    function compressAndPreviewBanner(event) {
       const file = event.target.files[0];
-      if (file && window.FB_DB) {
-        compressImage(file, 250, 250, async (compressedBase64) => {
-          currentShop.logo = compressedBase64;
-          const db = window.FB_DB;
-          const get = window.FB_get;
-          const set = window.FB_set;
-          const ref = window.FB_ref;
-          
-          const snapshot = await get(ref(db, 'allPlatformShops'));
-          if (snapshot.exists()) {
-            let allShops = snapshot.val();
-            let idx = allShops.findIndex(s => s.id === currentShop.id);
-            if(idx >= 0) { allShops[idx].logo = compressedBase64; await set(ref(db, 'allPlatformShops'), allShops); }
-          }
-          document.getElementById('storeLogoImg').src = compressedBase64; 
-          alert("✔ ಅಂಗಡಿಯ ಲೋಗೋ ಯಶಸ್ವಿಯಾಗಿ ಅಪ್ಡೇಟ್ ಆಯಿತು!");
+      if (file) {
+        compressImage(file, 800, 400, (compressedBase64) => {
+          currentCustomBannerBase64 = compressedBase64;
+          document.getElementById('bannerPreviewTag').src = currentCustomBannerBase64;
+          document.getElementById('bannerPreviewTag').classList.remove('hidden');
+          document.getElementById('noBannerPreviewText').classList.add('hidden');
         });
       }
     }
@@ -562,9 +1345,8 @@
       currentShop.mapUrl = document.getElementById('editShopMapInput').value.trim();
       currentShop.deliveryBanner = document.getElementById('editShopDeliveryBannerInput').value.trim() || '3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ!';
       
-      if(currentPaymentQrBase64) {
-        currentShop.paymentQr = currentPaymentQrBase64;
-      }
+      if(currentPaymentQrBase64) currentShop.paymentQr = currentPaymentQrBase64;
+      if(currentCustomBannerBase64) currentShop.bannerImg = currentCustomBannerBase64;
 
       const snapshot = await window.FB_get(window.FB_ref(db, 'allPlatformShops'));
       if (snapshot.exists()) {
@@ -573,7 +1355,7 @@
         if(idx >= 0) { allShops[idx] = currentShop; await window.FB_set(window.FB_ref(db, 'allPlatformShops'), allShops); }
       }
 
-      alert("✔ ಪ್ರೊಫೈಲ್, ಪಾವತಿ QR ಮತ್ತು ಡೆಲಿವರಿ ಬ್ಯಾನರ್ ಯಶಸ್ವಿಯಾಗಿ ಸೇವ್ ಆಗಿದೆ!"); 
+      showCustomAppAlert("ಯಶಸ್ಸು", "✔ ಪ್ರೊಫೈಲ್ ಮತ್ತು ಮ್ಯಾಪ್ ಲಿಂಕ್ ಯಶಸ್ವಿಯಾಗಿ ಸೇವ್ ಆಗಿದೆ!"); 
       closeProfileModal(); initSellerDashboard();
     }
 
@@ -588,12 +1370,12 @@
       let tickets = snapshot.exists() ? snapshot.val() : [];
       tickets.push({ shopId: currentShop.id, shopCode: currentShop.shopCode, shopName: currentShop.name, shopPhone: currentShop.phone, message: text, reply: '', status: 'Pending', date: new Date().toLocaleString() });
       await window.FB_set(window.FB_ref(db, 'adminHelpTickets'), tickets);
-      document.getElementById('helpMessageInput').value = ''; alert("✔ ಸಹಾಯ ಸಂದೇಶ ಕಳುಹಿಸಲಾಗಿದೆ!"); closeInAppHelpModal();
+      document.getElementById('helpMessageInput').value = ''; showCustomAppAlert("ಸಹಾಯ", "✔ ಸಹಾಯ ಸಂದೇಶ ಕಳುಹಿಸಲಾಗಿದೆ!"); closeInAppHelpModal();
     }
 
     function copySellerStoreLink() {
       navigator.clipboard.writeText(document.getElementById('sellerStoreLinkBox').value);
-      alert("✔ ಲಿಂಕ್ ಕಾಪಿ ಆಗಿದೆ!");
+      showCustomAppAlert("ಲಿಂಕ್ ಕಾಪಿ", "✔ ಲಿಂಕ್ ಕಾಪಿ ಆಗಿದೆ!");
     }
 
     function shareViaWhatsApp() {
@@ -613,14 +1395,14 @@
       orders.forEach((ord, idx) => {
         if(ord && ord.status !== 'Cancelled') {
           totalSales += Number(ord.total);
-          rowsHtml += `<tr><td style="padding: 8px; border: 1px solid #ddd;">${idx + 1}</td><td style="padding: 8px; border: 1px solid #ddd;">${ord.customerName} (${ord.customerPhone})</td><td style="padding: 8px; border: 1px solid #ddd;">${ord.itemsSummary}</td><td style="padding: 8px; border: 1px solid #ddd;">₹${ord.total}</td><td style="padding: 8px; border: 1px solid #ddd;">${ord.paymentType.toUpperCase()}</td></tr>`;
+          rowsHtml += `<tr><td style="padding: 8px; border: 1px solid #ddd;">${idx + 1}</td><td style="padding: 8px; border: 1px solid #ddd;">${ord.customerName} (${ord.customerPhone})</td><td style="padding: 8px; border: 1px solid #ddd;">${ord.itemsSummary}</td><td style="padding: 8px; border: 1px solid #ddd;">₹${ord.total}</td><td style="padding: 8px; border: 1px solid #ddd;">${(ord.paymentType || 'cod').toUpperCase()}</td></tr>`;
         }
       });
       const printWin = window.open('', '_blank');
       printWin.document.write(`
         <html>
         <head><title>Daily Sales Report - ${currentShop.name}</title>
-        <style>body { font-family: sans-serif; padding: 20px; color: #000; } h2, p { text-align: center; margin: 5px 0; } table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; } th { background: #22c55e; color: #000; padding: 10px; border: 1px solid #ddd; text-align: left; } .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 20px; } button { display: block; width: 200px; margin: 30px auto; background: #22c55e; color: #000; border: none; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; } @media print { button { display: none; } }</style>
+        <style>body { font-family: sans-serif; padding: 20px; color: #000; } h2, p { text-align: center; margin: 5px 0; } table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; } th { background: #2563eb; color: #fff; padding: 10px; border: 1px solid #ddd; text-align: left; } .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 20px; } button { display: block; width: 200px; margin: 30px auto; background: #2563eb; color: #fff; border: none; padding: 12px; font-weight: bold; border-radius: 8px; cursor: pointer; } @media print { button { display: none; } }</style>
         </head>
         <body>
           <h2>${currentShop.name} - ಡೈಲಿ ಸೇಲ್ಸ್ ರಿಪೋರ್ಟ್</h2>
@@ -636,7 +1418,7 @@
 
     function selectTab(tab) {
       ['inventory', 'orders', 'khata', 'reviews'].forEach(t => document.getElementById('section' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('hidden'));
-      document.getElementById('tabInv').className = document.getElementById('tabOrd').className = document.getElementById('tabKha').className = document.getElementById('tabRev').className = "flex-1 py-3 text-gray-400 text-center";
+      document.getElementById('tabInv').className = document.getElementById('tabOrd').className = document.getElementById('tabKha').className = document.getElementById('tabRev').className = "flex-1 py-3 text-gray-400 text-center whitespace-nowrap px-3";
       document.getElementById('section' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
       
       let activeBtnId = 'tabInv';
@@ -644,30 +1426,10 @@
       else if(tab === 'khata') activeBtnId = 'tabKha';
       else if(tab === 'reviews') activeBtnId = 'tabRev';
 
-      document.getElementById(activeBtnId).className = "flex-1 py-3 text-green-400 border-b-2 border-green-500 text-center";
+      document.getElementById(activeBtnId).className = "flex-1 py-3 text-green-400 border-b-2 border-green-500 text-center whitespace-nowrap px-3";
       if(tab === 'orders' || tab === 'khata') loadSellerOrdersAndKhata();
       if(tab === 'reviews') loadSyncedCustomerReviews();
     }
-
-    function openQrModal() {
-      document.getElementById('qrShopTitleDisplay').innerText = currentShop.name;
-      document.getElementById('qrShopCodeDisplay').innerText = `ಶಾಪ್ ಕೋಡ್: ${currentShop.shopCode}`;
-      const qrContainer = document.getElementById('qrDynamicContainer'); qrContainer.innerHTML = "";
-      new QRCode(qrContainer, { text: `${window.location.origin}/shop.html?id=${currentShop.id}`, width: 170, height: 170 });
-      document.getElementById('qrModal').classList.remove('hidden');
-    }
-    function closeQrModal() { document.getElementById('qrModal').classList.add('hidden'); }
-    
-    function openProfileModal() {
-      document.getElementById('editShopNameInput').value = currentShop.name;
-      document.getElementById('editShopAddrInput').value = currentShop.addr;
-      document.getElementById('editShopMapInput').value = currentShop.mapUrl || '';
-      document.getElementById('editShopDeliveryBannerInput').value = currentShop.deliveryBanner || '3 ಕಿ.ಮೀ. ಒಳಗೆ ಉಚಿತ ಡೆಲಿವರಿ!';
-      currentPaymentQrBase64 = currentShop.paymentQr || '';
-      if(currentPaymentQrBase64) { document.getElementById('paymentQrPreviewTag').src = currentPaymentQrBase64; document.getElementById('paymentQrPreviewTag').classList.remove('hidden'); document.getElementById('noPaymentQrText').classList.add('hidden'); }
-      document.getElementById('profileModal').classList.remove('hidden');
-    }
-    function closeProfileModal() { document.getElementById('profileModal').classList.add('hidden'); }
 
     async function loadSellerProducts() {
       if(!window.FB_DB) return;
@@ -731,7 +1493,6 @@
     function openProductModal() { document.getElementById('productModal').classList.remove('hidden'); }
     function closeProductModal() { document.getElementById('productModal').classList.add('hidden'); }
 
-    // Multi-Item Khata Functions
     function openKhataModal() {
       document.getElementById('khataCustName').value = '';
       document.getElementById('khataCustPhone').value = '';
@@ -783,7 +1544,7 @@
         }
       });
 
-      if(itemsSummaryArr.length === 0) { alert("ಕನಿಷ್ಠ ಒಂದು ವಸ್ತುವನ್ನಾದರೂ ಸೇರಿಸಿ!"); return; }
+      if(itemsSummaryArr.length === 0) { showCustomAppAlert("ಎಚ್ಚರಿಕೆ", "ಕನಿಷ್ಠ ಒಂದು ವಸ್ತುವನ್ನಾದರೂ ಸೇರಿಸಿ!"); return; }
 
       const db = window.FB_DB;
       const snapshot = await window.FB_get(window.FB_ref(db, `ledger_${currentShop.id}`));
@@ -810,7 +1571,7 @@
 
       await window.FB_set(window.FB_ref(db, `ledger_${currentShop.id}`), allLedgers);
       closeKhataModal();
-      alert("✔ ಉದ್ರಿ ಖಾತೆಗೆ ಯಶಸ್ವಿಯಾಗಿ ಸೇವ್ ಆಯಿತು!");
+      showCustomAppAlert("ಯಶಸ್ಸು", "✔ ಉದ್ರಿ ಖಾತೆಗೆ ಯಶಸ್ವಿಯಾಗಿ ಸೇವ್ ಆಯಿತು!");
       loadSellerOrdersAndKhata();
     }
 
@@ -847,6 +1608,8 @@
         <p class="text-amber-400 font-bold mt-1 text-sm">ಒಟ್ಟು ಬಾಕಿ ಮೊತ್ತ (Due): ₹${cust.totalDue}</p>
       `;
       document.getElementById('settlementPaidAmount').value = '';
+      document.getElementById('settlementTickCheckbox').checked = false;
+      toggleSettlementButtonState();
       document.getElementById('addMoreUdhariBox').classList.add('hidden');
       
       document.getElementById('modalKhataItemsContainer').innerHTML = `
@@ -867,7 +1630,7 @@
           if(!en) return;
           const isPayment = en.amount < 0;
           logHtml += `<div class="bg-gray-800 p-2.5 rounded-xl border border-gray-700 flex justify-between items-center">
-            <div><p class="text-[10px] text-gray-400">${en.date}</p><p class="text-white text-xs">${en.items} - <b class="${isPayment ? 'text-green-400' : 'text-amber-400'}">₹${Math.abs(en.amount)}</b></p></div>
+            <div><p class="text-[10px] text-cyan-400 font-mono">📅 ${en.date}</p><p class="text-white text-xs mt-0.5">${en.items} - <b class="${isPayment ? 'text-green-400' : 'text-amber-400'}">₹${Math.abs(en.amount)}</b></p></div>
             <span class="text-[9px] font-bold px-2 py-0.5 rounded ${isPayment ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}">${en.type}</span>
           </div>`;
         });
@@ -895,7 +1658,7 @@
         }
       });
 
-      if(itemsSummaryArr.length === 0 || totalAmount <= 0) { alert("ಕನಿಷ್ಠ ಒಂದು ವಸ್ತು ಮತ್ತು ಸರಿಯಾದ ಬೆಲೆ ನಮೂದಿಸಿ!"); return; }
+      if(itemsSummaryArr.length === 0 || totalAmount <= 0) { showCustomAppAlert("ಎಚ್ಚರಿಕೆ", "ಕನಿಷ್ಠ ಒಂದು ವಸ್ತು ಮತ್ತು ಸರಿಯಾದ ಬೆಲೆ ನಮೂದಿಸಿ!"); return; }
 
       const db = window.FB_DB;
       const snapshot = await window.FB_get(window.FB_ref(db, `ledger_${currentShop.id}`));
@@ -923,13 +1686,20 @@
       `;
       renderSettlementHistoryLog(cust);
       loadSellerOrdersAndKhata();
-      alert("✔ ಹೊಸ ಉದ್ರಿ ಯಶಸ್ವಿಯಾಗಿ ಆಡ್ ಆಯಿತು!");
+      showCustomAppAlert("ಯಶಸ್ಸು", "✔ ಹೊಸ ಉದ್ರಿ ಯಶಸ್ವಿಯಾಗಿ ಆಡ್ ಆಯಿತು!");
     }
 
-    async function processPartialPayment() {
+    // SIMPLE TICK & CONFIRM SETTLEMENT (Button active ONLY when checkbox is checked)
+    async function processTickConfirmationSettlement() {
       if(!window.FB_DB) return;
+      const isChecked = document.getElementById('settlementTickCheckbox').checked;
+      if(!isChecked) {
+        showCustomAppAlert("ಎಚ್ಚರಿಕೆ", "ದಯವಿಟ್ಟು ಪಾವತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ (Payment Received) ಚೆಕ್‌ಬಾಕ್ಸ್ ಮೇಲೆ ಟಿಕ್ ಮಾಡಿ.");
+        return;
+      }
+
       const paid = Number(document.getElementById('settlementPaidAmount').value) || 0;
-      if(paid <= 0) { alert("ಸರಿಯಾದ ಮೊತ್ತ ನಮೂದಿಸಿ."); return; }
+      if(paid <= 0) { showCustomAppAlert("ಎಚ್ಚರಿಕೆ", "ಸರಿಯಾದ ಮೊತ್ತ ನಮೂದಿಸಿ."); return; }
 
       const db = window.FB_DB;
       const snapshot = await window.FB_get(window.FB_ref(db, `ledger_${currentShop.id}`));
@@ -937,13 +1707,13 @@
       let cust = allLedgers[selectedKhataCustomerPhone];
       if(!cust) return;
 
-      if(paid > cust.totalDue) { alert("ಬಾಕಿ ಇರೋದಕ್ಕಿಂತ ಹೆಚ್ಚು ಮೊತ್ತ ನಮೂದಿಸಲಾಗಿದೆ!"); return; }
+      if(paid > cust.totalDue) { showCustomAppAlert("ಎಚ್ಚರಿಕೆ", "ಬಾಕಿ ಇರೋದಕ್ಕಿಂತ ಹೆಚ್ಚು ಮೊತ್ತ ನಮೂದಿಸಲಾಗಿದೆ!"); return; }
 
       cust.totalDue -= paid;
       if(!cust.entries) cust.entries = [];
       cust.entries.push({
         date: new Date().toLocaleString(),
-        items: `ಪಾವತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ`,
+        items: `ಟಿಕ್ ಕನ್ಫರ್ಮೇಷನ್ ಮೂಲಕ ಪಾವತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ`,
         amount: -paid,
         paid: paid,
         type: cust.totalDue === 0 ? 'Fully Settled' : 'Partial Payment'
@@ -953,14 +1723,31 @@
 
       await window.FB_set(window.FB_ref(db, `ledger_${currentShop.id}`), allLedgers);
       
+      // SEND PROFESSIONAL NOTIFICATION TO CUSTOMER NOTIFICATION BELL IN SHOP.HTML
+      const notifRef = window.FB_ref(db, 'adminHelpTickets');
+      const notifSnap = await window.FB_get(notifRef);
+      let tickets = notifSnap.exists() ? notifSnap.val() : [];
+      tickets.push({
+        shopId: currentShop.id,
+        shopName: currentShop.name,
+        shopPhone: selectedKhataCustomerPhone,
+        message: `ಉದ್ರಿ ಸೆಟಲ್ಮೆಂಟ್ ಬಿಲ್ ನಂಬರ್ #${Math.floor(100 + Math.random()*900)}`,
+        reply: `✔ Your bill of ₹${paid} has been successfully confirmed and settled by ${currentShop.name}[cite: 1]!`,
+        status: 'Resolved',
+        date: new Date().toLocaleString()
+      });
+      await window.FB_set(notifRef, tickets);
+
       document.getElementById('settlementCustomerInfo').innerHTML = `
         <p class="font-bold text-white text-sm">👤 ಕಸ್ಟಮರ್: ${cust.name} (${cust.phone})</p>
         <p class="text-amber-400 font-bold mt-1 text-sm">ಒಟ್ಟು ಬಾಕಿ ಮೊತ್ತ (Due): ₹${cust.totalDue}</p>
       `;
       document.getElementById('settlementPaidAmount').value = '';
+      document.getElementById('settlementTickCheckbox').checked = false;
+      toggleSettlementButtonState();
       renderSettlementHistoryLog(cust);
       loadSellerOrdersAndKhata();
-      alert("✔ ಪಾವತಿ ಯಶಸ್ವಿಯಾಗಿ ಅಪ್ಡೇಟ್ ಆಗಿದೆ!");
+      showCustomAppAlert("ಯಶಸ್ಸು", "✔ ಪಾವತಿ ಕನ್ಫರ್ಮ್ ಆಗಿದೆ! ಕಸ್ಟಮರ್ ನೋಟಿಫಿಕೇಶನ್‌ಗೆ ಬಿಲ್ ಸೆಟಲ್ಡ್ ಮೆಸೇಜ್ ಕಳುಹಿಸಲಾಗಿದೆ[cite: 1].");
     }
 
     function switchKhataSubTab(tab) {
@@ -969,11 +1756,11 @@
       const settledBtn = document.getElementById('subTabSettledBtn');
 
       if(tab === 'due') {
-        dueBtn.className = "bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold px-4 py-2 rounded-xl transition";
-        settledBtn.className = "bg-gray-800 text-gray-400 border border-gray-700 text-xs font-bold px-4 py-2 rounded-xl transition";
+        dueBtn.className = "bg-amber-500/20 text-amber-400 border border-amber-500/40 text-xs font-bold px-4 py-2 rounded-xl transition whitespace-nowrap";
+        settledBtn.className = "bg-gray-800 text-gray-400 border border-gray-700 text-xs font-bold px-4 py-2 rounded-xl transition whitespace-nowrap";
       } else {
-        settledBtn.className = "bg-green-500/20 text-green-400 border border-green-500/40 text-xs font-bold px-4 py-2 rounded-xl transition";
-        dueBtn.className = "bg-gray-800 text-gray-400 border border-gray-700 text-xs font-bold px-4 py-2 rounded-xl transition";
+        settledBtn.className = "bg-green-500/20 text-green-400 border border-green-500/40 text-xs font-bold px-4 py-2 rounded-xl transition whitespace-nowrap";
+        dueBtn.className = "bg-gray-800 text-gray-400 border border-gray-700 text-xs font-bold px-4 py-2 rounded-xl transition whitespace-nowrap";
       }
       loadSellerOrdersAndKhata();
     }
@@ -1029,6 +1816,9 @@
       const ordersSnap = await window.FB_get(window.FB_ref(db, 'shopOrders'));
       let orders = ordersSnap.exists() ? ordersSnap.val() : [];
       orders = orders.filter(o => o && o.shopId === currentShop.id);
+      
+      window._cachedOrders = orders;
+      renderSalesChart(orders);
 
       const ledgerSnap = await window.FB_get(window.FB_ref(db, `ledger_${currentShop.id}`));
       let allLedgers = ledgerSnap.exists() ? ledgerSnap.val() : {};
@@ -1040,7 +1830,6 @@
 
       let totalSales = 0, totalUdri = 0;
       
-      // Calculate sales strictly excluding Cancelled orders
       orders.forEach(ord => { 
         if(ord && ord.status !== 'Cancelled') {
           totalSales += Number(ord.total); 
@@ -1070,7 +1859,7 @@
               <p class="font-bold text-white text-sm">👤 ${cust.name} (${cust.phone})</p>
               <p class="text-gray-400 mt-0.5">ಒಟ್ಟು ವಹಿವಾಟುಗಳು: ${entriesCount} ಎಂಟ್ರಿಗಳು</p>
               <p class="${isSettled ? 'text-green-400' : 'text-amber-400'} font-black text-sm mt-1">
-                ${isSettled ? '✔ ಸಂಪೂರ್ಣ ಸೆಟಲ್ ಆಗಿದೆ (Settled)' : `ಬಾಕಿ ಮೊತ್ತ (Due): ₹${cust.totalDue}`}
+                ${isSettled ? '✔ ಸಂಪೂರ್ಣ ಸೆಟಲ್ ಆದವರು (Settled)' : `ಬಾಕಿ ಮೊತ್ತ (Due): ₹${cust.totalDue}`}
               </p>
             </div>
             <div class="flex items-center gap-2">
@@ -1096,21 +1885,59 @@
         orders.slice().reverse().forEach((ord, index) => {
           if(!ord) return;
           const isCancelled = ord.status === 'Cancelled';
+          const currentStatus = ord.status || 'Placed';
+          const isDelivered = currentStatus === 'Delivered';
+          const pType = (ord.paymentType || 'cod').toLowerCase();
           
+          let paymentBadgeColor = "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+          if(pType === 'udhari') paymentBadgeColor = "bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold";
+          if(pType === 'online' || pType === 'upi') paymentBadgeColor = "bg-green-500/20 text-green-400 border border-green-500/30 font-bold";
+
+          let manualUdhariBtn = "";
+          if(!isCancelled && !isDelivered && pType === 'udhari') {
+            const isReadyForUdhari = currentStatus === 'Out for Delivery';
+            if(isReadyForUdhari) {
+              manualUdhariBtn = `<button onclick="confirmAndAddUdhariManually('${ord.id}')" class="bg-amber-500 hover:bg-amber-600 text-black font-bold px-3 py-2 rounded-xl transition shadow text-xs">⚡ ಕನ್ಫರ್ಮ್ & ಉದ್ರಿ ಆಡ್ ಮಾಡಿ</button>`;
+            } else {
+              manualUdhariBtn = `<button disabled class="bg-gray-800 text-gray-500 font-bold px-3 py-2 rounded-xl text-xs cursor-not-allowed" title="ಡೆಲಿವರಿ ಹಂತ ತಲುಪಿದ ಬಳಿಕ ಆಕ್ಟಿವ್ ಆಗುತ್ತದೆ">⏳ ಉದ್ರಿ ಲಾಕ್ಡ್ (Locked)</button>`;
+            }
+          }
+
           ordersDiv.innerHTML += `
-            <div class="bg-gray-900 border ${isCancelled ? 'border-red-900/50 opacity-60' : 'border-gray-800'} p-4 rounded-2xl flex justify-between items-center text-xs shadow">
+            <div class="bg-gray-900 border ${isCancelled ? 'border-red-900/50 opacity-60' : 'border-gray-800'} p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3 text-xs shadow">
               <div>
-                <p class="font-bold text-white text-sm">👤 ${ord.customerName} (${ord.customerPhone})</p>
-                <p class="text-gray-300 mt-0.5">📦 ${ord.itemsSummary}</p>
-                <p class="${isCancelled ? 'text-red-400 font-bold' : 'text-green-400 font-bold'} mt-1">
-                  ₹${ord.total} | ${ord.paymentType.toUpperCase()}
-                </p>
+                <p class="font-bold text-white text-sm">👤 ${ord.customerName} (${ord.customerPhone}) - <span class="text-cyan-400">${ord.customerAddr}</span></p>
+                <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                  <span class="text-green-400 font-black text-sm">₹${ord.total}</span>
+                  <span class="px-2.5 py-0.5 rounded-lg ${paymentBadgeColor}">💳 ${pType.toUpperCase()}</span>
+                </div>
+                <p class="text-gray-300 mt-1">📦 ${ord.itemsSummary}</p>
+                <p class="text-gray-400 font-mono text-[10px] mt-0.5">📅 ${ord.date} ${ord.cancelReason ? `| <span class="text-red-400 font-bold">ಕಾರಣ: ${ord.cancelReason}</span>` : ''}</p>
               </div>
-              <div class="flex items-center gap-2">
-                <span class="${isCancelled ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-green-500/20 text-green-400'} px-2.5 py-1 rounded-lg font-bold">
-                  ${isCancelled ? '❌ Cancelled' : ord.status}
+              <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+                <span class="${isCancelled ? 'bg-red-500/20 text-red-400 border border-red-500/30' : (isDelivered ? 'bg-green-500 text-black font-black' : 'bg-green-500/20 text-green-400')} px-3 py-1.5 rounded-xl font-bold">
+                  ${isCancelled ? '❌ Cancelled' : currentStatus}
                 </span>
-                ${!isCancelled ? `<button onclick="updateOrderStatusFromSeller('${ord.id}')" class="bg-cyan-500 hover:bg-cyan-600 text-black font-bold px-3 py-1.5 rounded-xl transition text-[10px]">ಸ್ಟೇಟಸ್ ಬದಲಾಯಿಸಿ</button>` : ''}
+                
+                ${manualUdhariBtn}
+
+                <button onclick="viewOrderInvoice('${ord.id}')" class="bg-gray-800 hover:bg-gray-700 text-cyan-400 font-bold px-3 py-2 rounded-xl border border-gray-700 transition">
+                  📄 ಬಿಲ್ ನೋಡಿ
+                </button>
+
+                ${!isCancelled && !isDelivered ? `
+                  <div class="flex items-center gap-1.5">
+                    <select onchange="updateOrderStatusCycle('${ord.id}', this.value)" class="bg-gray-800 border border-gray-700 text-cyan-400 font-bold p-2 rounded-xl outline-none text-xs">
+                      <option value="Placed" ${currentStatus === 'Placed' ? 'selected' : ''}>1. Placed</option>
+                      <option value="Preparing" ${currentStatus === 'Preparing' ? 'selected' : ''}>2. Preparing</option>
+                      <option value="Out for Delivery" ${currentStatus === 'Out for Delivery' ? 'selected' : ''}>3. Out for Delivery</option>
+                      <option value="Delivered" ${currentStatus === 'Delivered' ? 'selected' : ''}>4. Delivered</option>
+                    </select>
+                    <button onclick="openRejectReasonModal('${ord.id}')" class="bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white font-bold px-3 py-2 rounded-xl border border-red-500/30 transition">
+                      ✕ Reject
+                    </button>
+                  </div>
+                ` : (isDelivered ? `<span class="text-[10px] text-gray-500 font-bold px-2 py-1 bg-gray-800 rounded-lg">🔒 Locked (Delivered)</span>` : '')}
               </div>
             </div>`;
         });
@@ -1121,19 +1948,148 @@
       document.getElementById('metricUdri').innerText = `₹${totalUdri}`;
     }
 
-    async function updateOrderStatusFromSeller(ordId) {
+    async function confirmAndAddUdhariManually(ordId) {
       if(!window.FB_DB) return;
       const db = window.FB_DB;
       const snapshot = await window.FB_get(window.FB_ref(db, 'shopOrders'));
       let orders = snapshot.exists() ? snapshot.val() : [];
       let ord = orders.find(o => o && o.id === ordId);
-      if(ord) {
-        let nextStatus = ord.status === 'Placed' ? 'Paid' : 'Placed';
-        ord.status = nextStatus;
+
+      if(!ord) return;
+      if(ord.status === 'Cancelled') {
+        showCustomAppAlert("ಎಚ್ಚರಿಕೆ", "⚠️ ಈ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ (Cancelled) ಆಗಿರುವುದರಿಂದ ಉದ್ರಿ ಖಾತೆಗೆ ಸೇರಿಸಲು ಬರುವುದಿಲ್ಲ!");
+        return;
+      }
+
+      showCustomAppConfirm("ಉದ್ರಿ ಕನ್ಫರ್ಮ್", "ಈ ಉದ್ರಿ ಆರ್ಡರ್ ಅನ್ನು ಕನ್ಫರ್ಮ್ ಮಾಡಿ ಗ್ರಾಹಕರ ಖಾತೆಗೆ (Ledger) ಸೇರಿಸಬೇಕೇ?", async () => {
+        ord.status = 'Delivered';
+
+        const ledgerRef = window.FB_ref(db, `ledger_${currentShop.id}`);
+        const ledgerSnap = await window.FB_get(ledgerRef);
+        let allLedgers = ledgerSnap.exists() ? ledgerSnap.val() : {};
+        
+        let custPhone = ord.customerPhone;
+        let custName = ord.customerName;
+
+        if(!allLedgers[custPhone]) {
+          allLedgers[custPhone] = { name: custName, phone: custPhone, entries: [], totalDue: 0, status: 'Due' };
+        }
+
+        if(!allLedgers[custPhone].entries) allLedgers[custPhone].entries = [];
+        
+        const currentDateTime = new Date().toLocaleString();
+        allLedgers[custPhone].entries.push({
+          date: currentDateTime,
+          items: `ಆನ್‌ಲೈನ್ ಉದ್ರಿ ಆರ್ಡರ್ #${ord.id}: ${ord.itemsSummary}`,
+          amount: Number(ord.total),
+          paid: 0,
+          type: 'ಆನ್‌ಲೈನ್ ಉದ್ರಿ'
+        });
+        allLedgers[custPhone].totalDue += Number(ord.total);
+        allLedgers[custPhone].status = 'Due';
+
+        await window.FB_set(ledgerRef, allLedgers);
         await window.FB_set(window.FB_ref(db, 'shopOrders'), orders);
         loadSellerOrdersAndKhata();
-        alert(`✔ ಆರ್ಡರ್ ಸ್ಟೇಟಸ್ '${nextStatus}' ಎಂದು ಅಪ್ಡೇಟ್ ಆಗಿದೆ!`);
+        showCustomAppAlert("ಯಶಸ್ಸು", `✔ ಕಸ್ಟಮರ್ (${custName} - ${custPhone}) ರವರ ಉದ್ರಿ ಖಾತೆಗೆ ₹${ord.total} ಯಶಸ್ವಿಯಾಗಿ ಆಡ್ ಆಗಿದೆ!`);
+      });
+    }
+
+    async function updateOrderStatusCycle(ordId, newStatus) {
+      if(!window.FB_DB) return;
+
+      const db = window.FB_DB;
+      const snapshot = await window.FB_get(window.FB_ref(db, 'shopOrders'));
+      let orders = snapshot.exists() ? snapshot.val() : [];
+      let ord = orders.find(o => o && o.id === ordId);
+
+      if(!ord) return;
+
+      if(ord.status === 'Cancelled') {
+        showCustomAppAlert("ಎಚ್ಚರಿಕೆ", "⚠️ ಈ ಆರ್ಡರ್ ಕ್ಯಾನ್ಸಲ್ ಆಗಿದೆ. ಸ್ಟೇಟಸ್ ಬದಲಾಯಿಸಲು ಬರುವುದಿಲ್ಲ.");
+        loadSellerOrdersAndKhata();
+        return;
       }
+
+      if(newStatus === 'Delivered') {
+        showCustomAppConfirm("ಡೆಲಿವರಿ ಕನ್ಫರ್ಮ್", "ಖಂಡಿತವಾಗಿ ಈ ಆರ್ಡರ್ ಡೆಲಿವರಿ (Delivered) ಆಗಿದೆ ಎಂದು ಕನ್ಫರ್ಮ್ ಮಾಡುತ್ತೀರಾ?", async () => {
+          ord.status = newStatus;
+          
+          if(newStatus === 'Delivered' && (ord.paymentType || '').toLowerCase() === 'udhari') {
+            const ledgerRef = window.FB_ref(db, `ledger_${currentShop.id}`);
+            const ledgerSnap = await window.FB_get(ledgerRef);
+            let allLedgers = ledgerSnap.exists() ? ledgerSnap.val() : {};
+            
+            let custPhone = ord.customerPhone;
+            let custName = ord.customerName;
+
+            if(!allLedgers[custPhone]) {
+              allLedgers[custPhone] = { name: custName, phone: custPhone, entries: [], totalDue: 0, status: 'Due' };
+            }
+
+            if(!allLedgers[custPhone].entries) allLedgers[custPhone].entries = [];
+            
+            const currentDateTime = new Date().toLocaleString();
+            allLedgers[custPhone].entries.push({
+              date: currentDateTime,
+              items: `ಆನ್‌ಲೈನ್ ಆರ್ಡರ್ #${ord.id}: ${ord.itemsSummary}`,
+              amount: Number(ord.total),
+              paid: 0,
+              type: 'ಆನ್‌ಲೈನ್ ಉದ್ರಿ'
+            });
+            allLedgers[custPhone].totalDue += Number(ord.total);
+            allLedgers[custPhone].status = 'Due';
+
+            await window.FB_set(ledgerRef, allLedgers);
+          }
+
+          await window.FB_set(window.FB_ref(db, 'shopOrders'), orders);
+          loadSellerOrdersAndKhata();
+          showCustomAppAlert("ಯಶಸ್ಸು", `✔ ಆರ್ಡರ್ ಸ್ಟೇಟಸ್ '${newStatus}' ಎಂದು ಅಪ್ಡೇಟ್ ಆಗಿದೆ!`);
+        });
+        return;
+      }
+
+      ord.status = newStatus;
+      await window.FB_set(window.FB_ref(db, 'shopOrders'), orders);
+      loadSellerOrdersAndKhata();
+      showCustomAppAlert("ಯಶಸ್ಸು", `✔ ಆರ್ಡರ್ ಸ್ಟೇಟಸ್ '${newStatus}' ಎಂದು ಅಪ್ಡೇಟ್ ಆಗಿದೆ!`);
+    }
+
+    async function viewOrderInvoice(ordId) {
+      if(!window.FB_DB) return;
+      const snap2 = await window.FB_get(window.FB_ref(window.FB_DB, 'shopOrders'));
+      let orders = snap2.exists() ? snap2.val() : [];
+      let ord = orders.find(o => o && o.id === ordId);
+      if(!ord) return;
+
+      const pMode = (ord.paymentType || 'cod').toUpperCase();
+
+      document.getElementById('invoiceModalContent').innerHTML = `
+        <div class="text-center border-b pb-2">
+          <h4 class="font-bold text-sm">${currentShop.name}</h4>
+          <p class="text-[10px] text-gray-600">ಶಾಪ್ ಕೋಡ್: ${currentShop.shopCode} | ವಿಳಾಸ: ${currentShop.addr}</p>
+        </div>
+        <div class="space-y-1 pt-2">
+          <p><b>ಆರ್ಡರ್ ಐಡಿ:</b> ${ord.id}</p>
+          <p><b>ದಿನಾಂಕ:</b> ${ord.date}</p>
+          <p><b>ಗ್ರಾಹಕರು:</b> ${ord.customerName} (${ord.customerPhone})</p>
+          <p><b>ವಿಳಾಸ:</b> ${ord.customerAddr}</p>
+        </div>
+        <div class="border-t border-b py-2 space-y-1 my-2">
+          <p><b>ವಸ್ತುಗಳು:</b> ${ord.itemsSummary}</p>
+        </div>
+        <div class="flex justify-between font-black text-sm pt-1">
+          <span>ಒಟ್ಟು ಮೊತ್ತ:</span>
+          <span class="text-green-600">₹${ord.total}</span>
+        </div>
+        <p class="text-[11px] font-bold text-center text-cyan-600 pt-2 bg-gray-100 rounded p-1">ಪಾವತಿ ವಿಧಾನ: ${pMode} | ಸ್ಟೇಟಸ್: ${ord.status}</p>
+      `;
+      document.getElementById('orderInvoiceModal').classList.remove('hidden');
+    }
+
+    function closeOrderInvoiceModal() {
+      document.getElementById('orderInvoiceModal').classList.add('hidden');
     }
   </script>
 </body>
